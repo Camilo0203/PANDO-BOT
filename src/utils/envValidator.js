@@ -187,10 +187,10 @@ function validateAllEnv() {
       warnings.push("MONGO_URI does not enforce TLS/SSL in production. Consider adding ?tls=true or using mongodb+srv://");
     }
     if (!process.env.ENCRYPTION_KEY) {
-      errors.push("ENCRYPTION_KEY is required in production for secure storage");
+      warnings.push("ENCRYPTION_KEY is not set; secure storage features will be disabled");
     }
     if (!process.env.HASH_SALT) {
-      errors.push("HASH_SALT is required in production for stable hashing");
+      warnings.push("HASH_SALT is not set; stable hashing features will use fallback");
     }
   }
 
