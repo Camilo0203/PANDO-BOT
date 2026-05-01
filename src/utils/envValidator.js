@@ -79,6 +79,10 @@ const ENV_SCHEMA = {
   SUPABASE_SERVICE_ROLE_KEY: { required: false, type: "string" },
   SUPABASE_ANON_KEY: { required: false, type: "string" },
 
+  // Cryptography
+  ENCRYPTION_KEY: { required: false, type: "string", pattern: /^[a-f0-9]{64}$/i },
+  HASH_SALT: { required: false, type: "string", pattern: /^.{32,}$/ },
+
   // Premium/Billing (optional)
   PRO_UPGRADE_URL: { required: false, type: "string", default: "https://ton618.app/pricing" },
   BOT_API_KEY: { required: false, type: "string" },
@@ -86,7 +90,7 @@ const ENV_SCHEMA = {
   // Monitoring (optional)
   SENTRY_DSN: { required: false, type: "string" },
   LOGTAIL_SOURCE_TOKEN: { required: false, type: "string" },
-  ALERT_DISCORD_WEBHOOK: { required: false, type: "string" },
+  ALERT_DISCORD_WEBHOOK: { required: false, type: "string", pattern: /^https:\/\/discord\.com\/api\/webhooks\/\d+\/.+/ },
 };
 
 /**
@@ -173,6 +177,20 @@ function validateAllEnv() {
     if (key.startsWith("npm_") || key.startsWith("NODE_")) continue;
     if (!knownKeys.includes(key)) {
       warnings.push(`Unknown environment variable: ${key}`);
+    }
+  }
+
+  // Production security checks
+  if (process.env.NODE_ENV === "production") {
+    const mongoUri = process.env.MONGO_URI || "";
+    if (mongoUri && !/\?.*(tls|ssl)=true/.test(mongoUri) && !mongoUri.includes("mongodb+srv://")) {
+      warnings.push("MONGO_URI does not enforce TLS/SSL in production. Consider adding ?tls=true or using mongodb+srv://");
+    }
+    if (!process.env.ENCRYPTION_KEY) {
+      errors.push("ENCRYPTION_KEY is required in production for secure storage");
+    }
+    if (!process.env.HASH_SALT) {
+      errors.push("HASH_SALT is required in production for stable hashing");
     }
   }
 

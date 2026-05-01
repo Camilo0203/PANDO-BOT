@@ -7,6 +7,7 @@ const {
   withDescriptionLocalizations,
   localizedChoice,
 } = require("../../../utils/slashLocalizations");
+const { logCommandExecution } = require("../../../utils/auditLogger");
 
 const general = require("./setup/general");
 const automod = require("./setup/automod");
@@ -120,8 +121,30 @@ module.exports = {
       });
 
       if (!updated) {
+        await logCommandExecution({
+          commandName: "setup",
+          subcommand: "language",
+          userId: interaction.user.id,
+          userTag: interaction.user.tag,
+          guildId: gid,
+          guildName: interaction.guild?.name || "Unknown",
+          options: { language: value },
+          success: false,
+          errorMessage: "language_save_failed",
+        });
         return er(t(value, "errors.language_save_failed"));
       }
+
+      await logCommandExecution({
+        commandName: "setup",
+        subcommand: "language",
+        userId: interaction.user.id,
+        userTag: interaction.user.tag,
+        guildId: gid,
+        guildName: interaction.guild?.name || "Unknown",
+        options: { language: value },
+        success: true,
+      });
 
       const label = getLanguageLabel(value, value);
       return ok(t(value, "setup.language.updated_value", { label }));
@@ -131,7 +154,18 @@ module.exports = {
 
     for (const mod of setupModules) {
       const handled = await mod.execute(ctx);
-      if (handled) return;
+      if (handled) {
+        await logCommandExecution({
+          commandName: "setup",
+          subcommand: group ? `${group}.${sub}` : sub,
+          userId: interaction.user.id,
+          userTag: interaction.user.tag,
+          guildId: gid,
+          guildName: interaction.guild?.name || "Unknown",
+          success: true,
+        });
+        return;
+      }
     }
 
     return interaction.reply({

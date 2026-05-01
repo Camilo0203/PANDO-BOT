@@ -52,39 +52,62 @@ async function requestSupabase(path, options = {}) {
   }
 
   const method = options.method || "GET";
-  const response = await fetchWithTimeout(
-    url.toString(),
-    {
-      method,
-      headers: getHeaders(config, {
-        includeBody: options.body !== undefined,
-        preferResolution: options.preferResolution === true,
-        returnRepresentation: options.returnRepresentation === true,
-        returnMinimal: options.returnMinimal === true,
-      }),
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
-    },
-    options.timeoutMs
-  );
+  const maxRetries = Number(options.maxRetries ?? process.env.SUPABASE_MAX_RETRIES) || 3;
+  const baseDelay = Number(options.baseDelayMs ?? process.env.SUPABASE_RETRY_DELAY_MS) || 1000;
 
-  if (!response.ok) {
+  let lastError = null;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await fetchWithTimeout(
+      url.toString(),
+      {
+        method,
+        headers: getHeaders(config, {
+          includeBody: options.body !== undefined,
+          preferResolution: options.preferResolution === true,
+          returnRepresentation: options.returnRepresentation === true,
+          returnMinimal: options.returnMinimal === true,
+        }),
+        body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      },
+      options.timeoutMs
+    );
+
+    if (response.ok) {
+      if (response.status === 204) {
+        return null;
+      }
+
+      const contentType = response.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) {
+        const text = await response.text().catch(() => "");
+        return text || null;
+      }
+
+      return response.json();
+    }
+
     const rawBody = await response.text().catch(() => "");
-    throw new Error(
+    lastError = new Error(
       `Supabase ${method} ${path} failed (${response.status}): ${rawBody || response.statusText}`
     );
+
+    const isRetryable = response.status === 429 || response.status >= 500;
+    if (!isRetryable || attempt === maxRetries) {
+      throw lastError;
+    }
+
+    const delay = baseDelay * Math.pow(2, attempt) + Math.floor(Math.random() * 500);
+    logStructured("warn", "dashboard.bridge.retry", {
+      attempt: attempt + 1,
+      maxRetries,
+      status: response.status,
+      path,
+      delayMs: delay,
+    });
+    await new Promise((r) => setTimeout(r, delay));
   }
 
-  if (response.status === 204) {
-    return null;
-  }
-
-  const contentType = response.headers.get("content-type") || "";
-  if (!contentType.includes("application/json")) {
-    const text = await response.text().catch(() => "");
-    return text || null;
-  }
-
-  return response.json();
+  throw lastError;
 }
 
 async function upsertRows(table, rows, options = {}) {

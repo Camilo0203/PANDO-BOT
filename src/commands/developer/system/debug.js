@@ -476,6 +476,15 @@ module.exports = {
           inline: false,
         },
         {
+          name: "🔒 Security",
+          value:
+            `Encryption: \`${process.env.ENCRYPTION_KEY ? "enabled" : "disabled"}\`\n` +
+            `Hash Salt: \`${process.env.HASH_SALT ? "enabled" : "disabled"}\`\n` +
+            `Mongo TLS: \`${(process.env.MONGO_URI || "").includes("tls=true") || (process.env.MONGO_URI || "").includes("mongodb+srv://") ? "enabled" : "check"}\`\n` +
+            `Env Validated: \`${Boolean(process.env.OWNER_ID)}\``,
+          inline: false,
+        },
+        {
           name: t(language, "debug.field.deploy"),
           value: formatBuildValue(buildInfo),
           inline: false,

@@ -55,7 +55,9 @@ function encrypt(text) {
     const iv = crypto.randomBytes(IV_LENGTH);
 
     // Create cipher
-    const key = Buffer.from(ENCRYPTION_KEY.substring(0, 32)); // Take first 32 chars
+    const key = ENCRYPTION_KEY.length === 64
+      ? Buffer.from(ENCRYPTION_KEY, "hex")
+      : Buffer.from(ENCRYPTION_KEY.substring(0, 32));
     const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
 
     // Encrypt
@@ -96,7 +98,9 @@ function decrypt(encryptedData) {
     const ciphertext = buffer.slice(IV_LENGTH + AUTH_TAG_LENGTH).toString("hex");
 
     // Create decipher
-    const key = Buffer.from(ENCRYPTION_KEY.substring(0, 32));
+    const key = ENCRYPTION_KEY.length === 64
+      ? Buffer.from(ENCRYPTION_KEY, "hex")
+      : Buffer.from(ENCRYPTION_KEY.substring(0, 32));
     const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
     decipher.setAuthTag(authTag);
 

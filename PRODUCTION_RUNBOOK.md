@@ -106,10 +106,10 @@ pm2 restart ton618
 ### Required Env Vars
 ```
 DISCORD_TOKEN=           # Bot token
-MONGO_URI=              # MongoDB connection
-SUPABASE_URL=          # For billing (optional)
-BOT_API_KEY=           # For billing (optional)
-OWNER_ID=              # Your Discord ID (optional)
+MONGO_URI=              # MongoDB connection (tls=true in production)
+OWNER_ID=              # Your Discord ID
+ENCRYPTION_KEY=          # 64 hex chars AES-256 key (required in production)
+HASH_SALT=             # >=32 chars HMAC salt (required in production)
 ```
 
 ### Optional Env Vars
@@ -118,6 +118,9 @@ USER_RATE_LIMIT_MAX_REQUESTS=5
 GUILD_RATE_LIMIT_MAX_REQUESTS=100
 GLOBAL_RATE_LIMIT_MAX_REQUESTS=1000
 PREMIUM_CACHE_TTL_MS=300000
+SUPABASE_MAX_RETRIES=3
+SUPABASE_RETRY_DELAY_MS=1000
+ERROR_LOG_MAX_SIZE_BYTES=10485760
 ```
 
 ---
@@ -151,15 +154,54 @@ git checkout main
 npm run deploy:compact
 ```
 
+### Deploy Updated Commands (after security changes)
+```bash
+# Deploy main bot commands (includes new confirm_code options)
+npm run deploy:compact
+
+# Deploy music commands
+npm run deploy:music
+```
+
+---
+
+## Ecosystem Deploy
+
+### Web (ton618-web)
+```bash
+cd ../ton618-web
+npm ci
+npm run build
+# Deploy to Netlify / Vercel / Static host
+```
+
+### Music (ton618-music)
+```bash
+cd ../ton618-music
+npm ci
+node deploy-commands.js
+npm start
+```
+
+### Lavalink Nodes
+```bash
+cd ../Nodo\ Lavalink
+# Start PRO node (port 2333)
+java -jar Lavalink.jar --spring.config.location=./lavalink/application.yml
+# Start FREE node (port 2334)
+java -jar Lavalink.jar --spring.config.location=./lavalink/application-free.yml
+```
+
 ---
 
 ## Support
 
 - Issues: GitHub Issues
 - Discord: Your support server
-- Email: (add your email)
+- Email: support@ton618.app
+- Security: security@ton618.app
 
 ---
 
-**Last Updated**: 2026-04-13
+**Last Updated**: 2026-04-30
 **Version**: 3.0.0

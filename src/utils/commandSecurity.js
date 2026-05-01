@@ -138,7 +138,7 @@ function checkDiscordExploits(input) {
   }
   
   // Check for invite spam
-  const inviteMatches = input.match(DISORD_EXPLOIT_PATTERNS[4]);
+  const inviteMatches = input.match(DISCORD_EXPLOIT_PATTERNS[4]);
   if (inviteMatches && inviteMatches.length > 3) {
     threats.push(`Invite spam detected: ${inviteMatches.length} invites`);
   }

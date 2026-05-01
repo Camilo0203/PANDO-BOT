@@ -52,23 +52,28 @@ function sanitizeString(input, maxLength = MAX_MESSAGE_CONTENT_LENGTH) {
   return sanitized;
 }
 
+const MAX_REGEX_INPUT_LENGTH = 5000;
+
 function checkSuspiciousUrls(input) {
   if (typeof input !== "string") return { hasSuspicious: false, threats: [] };
-  
+
   const threats = [];
-  
+  const safeInput = input.length > MAX_REGEX_INPUT_LENGTH
+    ? input.slice(0, MAX_REGEX_INPUT_LENGTH)
+    : input;
+
   for (const pattern of SUSPICIOUS_URL_PATTERNS) {
-    if (pattern.test(input)) {
+    if (pattern.test(safeInput)) {
       threats.push(`Suspicious URL pattern: ${pattern}`);
     }
   }
-  
+
   for (const keyword of PHISHING_KEYWORDS) {
-    if (keyword.test(input)) {
+    if (keyword.test(safeInput)) {
       threats.push(`Phishing keyword detected: ${keyword}`);
     }
   }
-  
+
   return {
     hasSuspicious: threats.length > 0,
     threats,

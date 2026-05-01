@@ -9,6 +9,25 @@ const logger = require("./structuredLogger");
 // does not restart the process prematurely.
 const STARTUP_GRACE_PERIOD_MS = Number(process.env.HEALTH_STARTUP_GRACE_MS) || 90_000;
 
+const HEALTH_RATE_LIMIT_WINDOW_MS = 60_000;
+const HEALTH_RATE_LIMIT_MAX_REQUESTS = 30;
+const healthRequestCounts = new Map();
+
+function isHealthRateLimited(ip) {
+  const now = Date.now();
+  const record = healthRequestCounts.get(ip);
+  if (!record) {
+    healthRequestCounts.set(ip, { count: 1, start: now });
+    return false;
+  }
+  if (now - record.start > HEALTH_RATE_LIMIT_WINDOW_MS) {
+    healthRequestCounts.set(ip, { count: 1, start: now });
+    return false;
+  }
+  record.count += 1;
+  return record.count > HEALTH_RATE_LIMIT_MAX_REQUESTS;
+}
+
 let _server = null;
 let _startedAt = null;
 
@@ -28,6 +47,13 @@ function startHealthServer({ healthState, buildInfo, getClient, port }) {
   return new Promise((resolve, reject) => {
     const server = http.createServer((req, res) => {
       const url = req.url?.split("?")[0];
+      const clientIp = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket?.remoteAddress || "unknown";
+
+      if (isHealthRateLimited(clientIp)) {
+        res.writeHead(429, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Too Many Requests" }));
+        return;
+      }
 
       // /health and / — Square Cloud primary health check
       if (url === "/health" || url === "/") {

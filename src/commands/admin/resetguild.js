@@ -96,6 +96,17 @@ const data = new SlashCommandBuilder()
       })
       .setRequired(false)
       .setMaxLength(500)
+  )
+  .addStringOption((opt) =>
+    opt
+      .setName("confirm_code")
+      .setDescription("Confirmation code (run without this first to get it)")
+      .setDescriptionLocalizations({
+        "es-ES": "Código de confirmación (ejecuta sin esto primero para obtenerlo)",
+        "en-US": "Confirmation code (run without this first to get it)",
+      })
+      .setRequired(false)
+      .setMaxLength(32)
   );
 
 module.exports = {
@@ -122,6 +133,7 @@ module.exports = {
     const preservePro = interaction.options.getBoolean("preserve_pro") ?? true;
     const preserveTickets = interaction.options.getBoolean("preserve_tickets") ?? false;
     const reason = interaction.options.getString("reason") || t(language, "resetguild.default_reason");
+    const confirmCodeInput = interaction.options.getString("confirm_code");
 
     // Handle 'this' as current guild
     if (guildIdInput.toLowerCase() === "this") {
@@ -133,6 +145,29 @@ module.exports = {
         content: t(language, "resetguild.invalid_guild_id"),
         flags: 64,
       });
+    }
+
+    // Require confirmation code for destructive action
+    const expectedCode = "RESET_GUILD_" + guildIdInput.slice(-4).toUpperCase() + "_" + Math.random().toString(36).substring(2, 6).toUpperCase();
+    if (!confirmCodeInput || !confirmCodeInput.startsWith("RESET_GUILD_")) {
+      const db = getDB();
+      let totalDocs = 0;
+      for (const collectionName of GUILD_COLLECTIONS) {
+        try {
+          totalDocs += await db.collection(collectionName).countDocuments({ guild_id: guildIdInput });
+        } catch { /* ignore */ }
+      }
+      const embed = new EmbedBuilder()
+        .setColor(0xF1C40F)
+        .setTitle(t(language, "resetguild.preview_title") || "⚠️ Reset Guild Preview")
+        .setDescription(
+          `**Guild ID:** \`${guildIdInput}\`\n` +
+          `**Documents to delete:** ${totalDocs}\n\n` +
+          `**Confirmation code required:** \`${expectedCode}\`\n` +
+          `Run this command again with \`confirm_code: ${expectedCode}\` to execute.`
+        )
+        .setTimestamp();
+      return interaction.reply({ embeds: [embed], flags: 64 });
     }
 
     await interaction.deferReply({ flags: 64 });
