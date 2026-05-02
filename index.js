@@ -439,17 +439,6 @@ async function startBot() {
 
     client = createDiscordClient(healthState);
 
-    // ── Music module reactivation ──
-    try {
-      const { MusicManager } = require("../ton618-music/src/music/MusicManager");
-      const { musicInteractionHandler } = require("../ton618-music/src/handlers/musicInteractionHandler");
-      client.musicManager = new MusicManager(client);
-      client.on("interactionCreate", musicInteractionHandler);
-      logger.info("startup.music", "MusicManager initialized and handler registered");
-    } catch (musicErr) {
-      logger.error("startup.music", "MusicManager initialization failed (module unavailable)", { error: musicErr?.message || String(musicErr) });
-    }
-
     await runStartupStage(
       "command-loading",
       () => {

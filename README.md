@@ -15,7 +15,7 @@ TON618 supports **English + Español** today. When the bot joins a server, it pr
   - `lifetime`: $299.99 one-time
 - `Supporter`: recognition only. Donations never unlock premium features.
 
-Billing source of truth lives in Supabase with Lemon Squeezy as payment provider. The bot queries premium status via `billing-guild-status` Edge Function using `BOT_API_KEY` authentication. Premium status is cached locally for 5 minutes with stale cache fallback (1 hour) for resilience. `/debug entitlements` remains available for support overrides and manual recovery flows.
+Billing source of truth lives in Supabase with Whop as payment provider. The bot queries premium status via `billing-guild-status` Edge Function using `BOT_API_KEY` authentication. Premium status is cached locally for 5 minutes with stale cache fallback (1 hour) for resilience. `/debug entitlements` remains available for support overrides and manual recovery flows.
 
 ## What makes TON618 different
 
