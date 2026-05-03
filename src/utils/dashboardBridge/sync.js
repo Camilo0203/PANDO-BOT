@@ -96,7 +96,7 @@ async function syncGuildBridge(client, guild) {
     ...buildDashboardConfigPayload(records),
     updated_at: heartbeatAt,
   };
-  const inventoryRow = buildInventorySnapshotRow(client, guild);
+  const inventoryRow = buildInventorySnapshotRow(client, guild, records);
   const metricRow = await buildGuildMetricRow(guild, records);
   const ticketInboxRows = await buildTicketInboxRows(guild, records);
   const ticketEventRows = await buildTicketEventRows(guild.id);

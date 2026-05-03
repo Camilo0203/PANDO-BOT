@@ -13,6 +13,7 @@ const {
   ticketCategories,
   resolveTicketSlaMinutes,
 } = require("./runtime");
+const { t } = require("../i18n");
 const {
   DEFAULT_UPTIME_PERCENTAGE,
   formatMetricDate,
@@ -82,7 +83,8 @@ function normalizeChannelType(type) {
   }
 }
 
-function buildInventorySnapshotRow(client, guild) {
+function buildInventorySnapshotRow(client, guild, records = {}) {
+  const language = records?.settingsRecord?.bot_language === "en" ? "en" : "es";
   const roles = guild.roles.cache
     .filter((role) => role.id !== guild.id)
     .sort((left, right) => right.position - left.position)
@@ -109,8 +111,8 @@ function buildInventorySnapshotRow(client, guild) {
 
   const categories = ticketCategories.map((category) => ({
     id: category.id,
-    label: category.label,
-    description: category.description || null,
+    label: category.label || t(language, category.labelKey) || category.id,
+    description: category.description || t(language, category.descriptionKey) || null,
     priority: category.priority || null,
   }));
 
