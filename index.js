@@ -25,7 +25,7 @@ const {
 } = require("./src/utils/runtimeHealth");
 const { startMemoryMonitor, stopMemoryMonitor } = require("./src/utils/memoryManager");
 const { initiateShutdown, isShuttingDown } = require("./src/utils/shutdownManager");
-const { startHealthServer, stopHealthServer } = require("./src/utils/healthServer");
+const { startWebServer, stopWebServer } = require("./src/web/server");
 
 const GiveawayHandler = require("./src/handlers/giveawayHandler");
 const AutoRoleHandler = require("./src/handlers/autoRoleHandler");
@@ -249,7 +249,7 @@ async function cleanupStartupFailure(client, healthState) {
   } catch {}
 
   try {
-    await stopHealthServer();
+    await stopWebServer();
   } catch {}
 
   try {
@@ -306,9 +306,9 @@ async function startBot() {
       }
 
       try {
-        await stopHealthServer();
+        await stopWebServer();
       } catch (error) {
-        logStructured("error", "process.shutdown.health_server_error", {
+        logStructured("error", "process.shutdown.web_server_error", {
           signal,
           error: error?.message || String(error),
         });
@@ -384,17 +384,17 @@ async function startBot() {
     });
 
     await runStartupStage(
-      "health-server",
-      () => startHealthServer({
+      "web-server",
+      () => startWebServer({
         healthState,
         buildInfo,
         getClient: () => client,
         port: healthPort,
       }),
       {
-        startMessage: `Iniciando health server temprano en el puerto ${healthPort}...`,
-        successMessage: `Health server listo en el puerto ${healthPort}.`,
-        failureMessage: "No se pudo iniciar el health server.",
+        startMessage: `Iniciando web server con vhost en el puerto ${healthPort}...`,
+        successMessage: `Web server listo en el puerto ${healthPort}.`,
+        failureMessage: "No se pudo iniciar el web server.",
       }
     );
 
