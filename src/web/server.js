@@ -39,7 +39,7 @@ function startWebServer({ healthState, buildInfo, getClient, port }) {
     // Sub-applications
     const landingApp = createLandingApp({ healthState, buildInfo, getClient });
     const healthApp = createHealthApp({ healthState, buildInfo, getClient });
-    const dashboardApp = createDashboardApp({ getClient });
+    const dashboardApp = createDashboardApp({ healthState, buildInfo, getClient });
 
     // ── Virtual host routing ──
     // These patterns match the Host header (case-insensitive).
