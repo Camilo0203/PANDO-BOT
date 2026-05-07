@@ -82,6 +82,8 @@ supabase migration list
 supabase db push
 ```
 
+> **Nota v1 (2026-05-06):** Asegúrate de que la migración `20260506000000_unify_guild_entitlements_whop.sql` esté aplicada. Une `guild_subscriptions` (Whop) con `guild_effective_entitlements` para que el dashboard muestre correctamente el estado Pro de suscripciones Whop.
+
 Verifica en Supabase SQL Editor:
 
 ```sql
@@ -520,7 +522,7 @@ Si falla algo crítico:
    - `sync-discord-guilds`
    - `billing-create-checkout`
    - `billing-get-guilds`
-   - `billing-guild-status`
+   - [x] `billing-guild-status`
    - `billing-webhook`
 6. [ ] No borres filas de `webhook_events`, `guild_subscriptions`, `purchases` o `donations`.
 7. [ ] Si hubo cobro válido sin activación, corrige datos solo con evidencia y documenta.
