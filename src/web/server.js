@@ -7,6 +7,7 @@ const logger = require("../utils/structuredLogger");
 const { createLandingApp } = require("./apps/landing");
 const { createHealthApp } = require("./apps/health");
 const { createDashboardApp } = require("./apps/dashboard");
+const { createTebexApp } = require("./apps/tebex");
 
 // ── Globals ──
 let _server = null;
@@ -40,6 +41,10 @@ function startWebServer({ healthState, buildInfo, getClient, port }) {
     const landingApp = createLandingApp({ healthState, buildInfo, getClient });
     const healthApp = createHealthApp({ healthState, buildInfo, getClient });
     const dashboardApp = createDashboardApp({ healthState, buildInfo, getClient });
+    const tebexApp = createTebexApp({ getClient });
+
+    // ── Global routes (before vhost - webhooks need no specific Host header) ──
+    mainApp.use("/webhook-tebex", tebexApp);
 
     // ── Virtual host routing ──
     // These patterns match the Host header (case-insensitive).
