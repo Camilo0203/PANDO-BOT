@@ -83,6 +83,8 @@ supabase db push
 ```
 
 > **Nota v1 (2026-05-06):** Asegúrate de que la migración `20260506000000_unify_guild_entitlements_whop.sql` esté aplicada. Une `guild_subscriptions` (Whop) con `guild_effective_entitlements` para que el dashboard muestre correctamente el estado Pro de suscripciones Whop.
+>
+> **Nota v1 (2026-05-07):** Aplica `20260507100000_fix_rpc_jsonb_payload.sql`. Cambia `p_payload jsonb` → `json` en `request_guild_config_change` y `request_guild_backup_action` para evitar el error 400 "expected jsonb, received record" desde el dashboard.
 
 Verifica en Supabase SQL Editor:
 
