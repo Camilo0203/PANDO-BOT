@@ -73,7 +73,7 @@ function createLandingApp({ healthState, buildInfo, getClient }) {
     <div class="row">
       <a class="btn" href="${process.env.BOT_INVITE_URL || '#'}">Add to Server</a>
       <a class="btn secondary" href="${process.env.SUPPORT_SERVER_URL || '#'}">Support Server</a>
-      <a class="btn secondary" href="https://github.com/Camilo0203/ton618-bot">GitHub</a>
+      ${process.env.BOT_GITHUB_URL ? `<a class="btn secondary" href="${process.env.BOT_GITHUB_URL}">GitHub</a>` : ""}
     </div>
     <div class="meta">
       Version ${buildInfo?.version || "3.0.0"} &middot; Build ${buildInfo?.shortCommit || "unknown"} &middot; ${buildInfo?.deployTag || "dev"}

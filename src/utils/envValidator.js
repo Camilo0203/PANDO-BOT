@@ -87,6 +87,13 @@ const ENV_SCHEMA = {
   PRO_UPGRADE_URL: { required: false, type: "string", default: "https://ton618.app/pricing" },
   BOT_API_KEY: { required: false, type: "string" },
 
+  // Web server
+  DASH_API_KEY: { required: false, type: "string" },
+  ALLOWED_ORIGINS: { required: false, type: "string" },
+  BOT_GITHUB_URL: { required: false, type: "string" },
+  BOT_INVITE_URL: { required: false, type: "string" },
+  SUPPORT_SERVER_URL: { required: false, type: "string" },
+
   // Monitoring (optional)
   SENTRY_DSN: { required: false, type: "string" },
   LOGTAIL_SOURCE_TOKEN: { required: false, type: "string" },
@@ -183,7 +190,7 @@ function validateAllEnv() {
   // Production security checks
   if (process.env.NODE_ENV === "production") {
     const mongoUri = process.env.MONGO_URI || "";
-    if (mongoUri && !/\?.*(tls|ssl)=true/.test(mongoUri) && !mongoUri.includes("mongodb+srv://")) {
+    if (mongoUri && !/(tls|ssl)=true/.test(mongoUri) && !mongoUri.includes("mongodb+srv://")) {
       warnings.push("MONGO_URI does not enforce TLS/SSL in production. Consider adding ?tls=true or using mongodb+srv://");
     }
     if (!process.env.ENCRYPTION_KEY) {
@@ -191,6 +198,9 @@ function validateAllEnv() {
     }
     if (!process.env.HASH_SALT) {
       warnings.push("HASH_SALT is not set; stable hashing features will use fallback");
+    }
+    if (!process.env.DASH_API_KEY) {
+      warnings.push("DASH_API_KEY is not set; the internal dashboard at dash.ton618bot.xyz has NO authentication. Set a secure random key.");
     }
   }
 

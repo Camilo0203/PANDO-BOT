@@ -2,6 +2,7 @@
 
 const express = require("express");
 const path = require("path");
+const { createCorsMiddleware } = require("../middleware/security");
 
 /**
  * Dashboard App (dash.ton618bot.xyz)
@@ -16,14 +17,19 @@ const path = require("path");
  */
 function createDashboardApp({ healthState, buildInfo, getClient }) {
   const app = express();
+  app.use(createCorsMiddleware());
   app.use(express.json());
 
   // ── Static assets (CSS, JS, images) ──
   const publicDir = path.join(__dirname, "..", "public", "dashboard");
   app.use(express.static(publicDir, { maxAge: "1h" }));
 
-  // ── Simple API-key auth middleware (optional, controlled by env) ──
+  // ── API-key auth middleware ──
+  // REQUIRED in production. Set DASH_API_KEY in your environment.
   const DASH_API_KEY = process.env.DASH_API_KEY || null;
+  if (!DASH_API_KEY && process.env.NODE_ENV === "production") {
+    throw new Error("[Dashboard] DASH_API_KEY is required in production. Set it in your environment variables.");
+  }
   if (DASH_API_KEY) {
     app.use((req, res, next) => {
       const provided = req.headers["x-api-key"] || req.query.apiKey;

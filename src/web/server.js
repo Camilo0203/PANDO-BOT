@@ -3,6 +3,7 @@
 const express = require("express");
 const vhost = require("vhost");
 const logger = require("../utils/structuredLogger");
+const { createCorsMiddleware, createHelmetMiddleware } = require("./middleware/security");
 
 const { createLandingApp } = require("./apps/landing");
 const { createHealthApp } = require("./apps/health");
@@ -36,6 +37,10 @@ function startWebServer({ healthState, buildInfo, getClient, port }) {
 
   return new Promise((resolve, reject) => {
     const mainApp = express();
+
+    // ── Security headers (applies to all routes) ──
+    mainApp.use(createHelmetMiddleware());
+    mainApp.use(createCorsMiddleware());
 
     // Sub-applications
     const landingApp = createLandingApp({ healthState, buildInfo, getClient });
