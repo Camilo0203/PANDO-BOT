@@ -43,10 +43,9 @@ function createCorsMiddleware() {
 
   return cors({
     origin(requestOrigin, callback) {
-      // Allow server-to-server calls (no Origin header) only in non-production
+      // Allow server-to-server calls and health probes (no Origin header)
       if (!requestOrigin) {
-        const ok = process.env.NODE_ENV !== "production";
-        return callback(ok ? null : new Error("Origin required in production"), ok);
+        return callback(null, true);
       }
       if (allowedOrigins.includes(requestOrigin)) {
         return callback(null, true);
