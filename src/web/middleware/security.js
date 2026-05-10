@@ -16,6 +16,8 @@ const BASE_ORIGINS = [
   "https://ton618-web.squareweb.app",
   "https://ton618.squareweb.app",
   "https://dash.ton618bot.xyz",
+  "https://status.ton618bot.xyz",
+  "https://ton618-status.squareweb.app",
 ];
 
 function buildAllowedOrigins() {
