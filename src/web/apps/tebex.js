@@ -2,7 +2,7 @@
 
 const express = require("express");
 const crypto = require("crypto");
-const { getDB } = require("../utils/database");
+const { getDB } = require("../../utils/database");
 
 /**
  * Tebex Webhook App
