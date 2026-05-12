@@ -45,18 +45,40 @@ function createTebexApp({ getClient }) {
 
   // --- Firma helper ---
   function verifySignature(rawBody, signature) {
-    if (!SECRET_KEY || !signature) return false;
+    if (!SECRET_KEY) {
+      console.warn("[TebexWebhook] SECRET_KEY no configurado");
+      return false;
+    }
+    if (!signature) {
+      console.warn("[TebexWebhook] Header x-tebex-signature vacío o ausente");
+      return false;
+    }
     const expected = crypto
       .createHmac("sha256", SECRET_KEY)
       .update(rawBody)
       .digest("hex");
+
+    // Debug: mostrar sin revelar el secret completo
+    console.log(`[TebexWebhook] Firma recibida: ${signature.substring(0, 16)}... length=${signature.length}`);
+    console.log(`[TebexWebhook] Firma esperada: ${expected.substring(0, 16)}... length=${expected.length}`);
+    console.log(`[TebexWebhook] rawBody length=${rawBody?.length ?? 0}`);
+
     try {
       return crypto.timingSafeEqual(
         Buffer.from(expected, "hex"),
         Buffer.from(signature, "hex")
       );
     } catch {
-      return false;
+      // Si no coincide en hex, probar base64 (algunas plataformas usan base64)
+      try {
+        const expectedB64 = Buffer.from(expected, "hex").toString("base64");
+        return crypto.timingSafeEqual(
+          Buffer.from(expectedB64),
+          Buffer.from(signature)
+        );
+      } catch {
+        return false;
+      }
     }
   }
 
