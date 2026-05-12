@@ -49,6 +49,10 @@ function startWebServer({ healthState, buildInfo, getClient, port }) {
     const tebexApp = createTebexApp({ getClient });
 
     // ── Global routes (before vhost - webhooks need no specific Host header) ──
+    // Tebex validation probe: must respond 200 before vhost can redirect to landingApp
+    mainApp.get("/webhook-tebex", (req, res) => {
+      res.status(200).json({ status: "ok", message: "TON618 Tebex webhook endpoint ready" });
+    });
     mainApp.use("/webhook-tebex", tebexApp);
 
     // ── Virtual host routing ──
