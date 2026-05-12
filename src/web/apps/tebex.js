@@ -189,7 +189,8 @@ function createTebexApp({ getClient }) {
     ].some(e => eventType.toLowerCase().includes("payment"));
 
     if (!isPaymentEvent) {
-      return res.status(200).json({ received: true, processed: false, reason: "Event type ignored" });
+      // validation.webhook and other non-payment events: acknowledge but don't process
+      return res.status(200).json({ received: true });
     }
 
     const payload = req.body?.subject || req.body?.payload || req.body;
@@ -230,16 +231,6 @@ function createTebexApp({ getClient }) {
 
     // Siempre responder 200 a Tebex para evitar reintentos
     return res.status(200).json({ received: true, processed: true });
-  });
-
-  // --- GET handler: Tebex validation probe ---
-  app.get("/", (req, res) => {
-    res.status(200).json({
-      status: "ok",
-      message: "TON618 Tebex webhook endpoint ready",
-      configured: !!SECRET_KEY,
-      packageTierMap: Object.keys(PACKAGE_TIER_MAP),
-    });
   });
 
   // --- Health check ---

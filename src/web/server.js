@@ -49,16 +49,13 @@ function startWebServer({ healthState, buildInfo, getClient, port }) {
     const tebexApp = createTebexApp({ getClient });
 
     // ── Global routes (before vhost - webhooks need no specific Host header) ──
-    // Tebex validation probe: respond 200 to ANY method so validation always passes
-    mainApp.all("/webhook-tebex", (req, res, next) => {
-      // Log everything Tebex sends so we can debug
+    // Tebex validation probe: respond 200 to GET/HEAD on /webhook-tebex and /webhook-tebex/
+    mainApp.use("/webhook-tebex", (req, res, next) => {
       console.log(`[TebexValidation] ${req.method} ${req.originalUrl} host=${req.headers.host} ua="${req.headers['user-agent']}"`);
-      // If it's a GET/HEAD validation probe from Tebex, just return 200 OK immediately
       const isValidation = req.method === "GET" || req.method === "HEAD";
       if (isValidation) {
         return res.status(200).json({ status: "ok", message: "TON618 Tebex webhook endpoint ready" });
       }
-      // For POST/PUT (real webhooks), forward to tebexApp
       next();
     });
     mainApp.use("/webhook-tebex", tebexApp);
