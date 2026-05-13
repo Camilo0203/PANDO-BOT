@@ -28,20 +28,25 @@ function createTebexApp({ getClient }) {
   };
 
   // --- Middleware: raw body para validar firma ---
-  app.use(
-    express.raw({ type: "application/json" }),
-    (req, res, next) => {
-      if (req.body && Buffer.isBuffer(req.body)) {
-        req.rawBody = req.body;
-        try {
-          req.body = JSON.parse(req.body.toString("utf8"));
-        } catch {
-          req.body = {};
-        }
+  // Captura CUALQUIER body (Tebex puede enviar con Content-Type variado)
+  app.use((req, res, next) => {
+    let data = Buffer.alloc(0);
+    req.on("data", chunk => { data = Buffer.concat([data, chunk]); });
+    req.on("end", () => {
+      req.rawBody = data;
+      try {
+        req.body = data.length > 0 ? JSON.parse(data.toString("utf8")) : {};
+      } catch {
+        req.body = {};
       }
       next();
-    }
-  );
+    });
+    req.on("error", () => {
+      req.rawBody = Buffer.alloc(0);
+      req.body = {};
+      next();
+    });
+  });
 
   // --- Firma helper ---
   function verifySignature(rawBody, signature) {

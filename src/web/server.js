@@ -54,11 +54,17 @@ function startWebServer({ healthState, buildInfo, getClient, port }) {
       console.log(`[TebexValidation] ${req.method} ${req.originalUrl} host=${req.headers.host} ua="${req.headers['user-agent']}"`);
       const isValidation = req.method === "GET" || req.method === "HEAD";
       if (isValidation) {
-        return res.status(200).end();
+        return res.sendStatus(200);
       }
       next();
     });
-    mainApp.use("/webhook-tebex", tebexApp);
+
+    // Temporarily handle POST webhook directly here for validation testing
+    mainApp.post("/webhook-tebex", express.raw({ type: "*/*" }), (req, res) => {
+      console.log("[TebexValidation] POST directo en server.js");
+      res.sendStatus(200);
+    });
+    // mainApp.use("/webhook-tebex", tebexApp); // descomentar despues de validar
 
     // ── Virtual host routing ──
     // These patterns match the Host header (case-insensitive).
