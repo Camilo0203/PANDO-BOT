@@ -164,7 +164,7 @@ function createTebexApp({ getClient }) {
 
     if (!SECRET_KEY) {
       console.error("[TebexWebhook] TEBEX_SECRET_KEY no configurado");
-      return res.status(200).json({ received: true, error: "Server misconfiguration" });
+      return res.status(200).end();
     }
 
     // Si no hay firma (validación de Tebex), aceptar pero advertir
@@ -189,8 +189,8 @@ function createTebexApp({ getClient }) {
     ].some(e => eventType.toLowerCase().includes("payment"));
 
     if (!isPaymentEvent) {
-      // validation.webhook and other non-payment events: acknowledge but don't process
-      return res.status(200).json({ received: true });
+      // validation.webhook and other non-payment events: bare 200 OK
+      return res.status(200).end();
     }
 
     const payload = req.body?.subject || req.body?.payload || req.body;
@@ -230,7 +230,7 @@ function createTebexApp({ getClient }) {
     })();
 
     // Siempre responder 200 a Tebex para evitar reintentos
-    return res.status(200).json({ received: true, processed: true });
+    return res.status(200).end();
   });
 
   // --- Health check ---
