@@ -18,6 +18,11 @@ const BASE_ORIGINS = [
   "https://dash.ton618bot.xyz",
   "https://status.ton618bot.xyz",
   "https://ton618-status.squareweb.app",
+  // Tebex origins for webhook validation
+  "https://tebex.io",
+  "https://www.tebex.io",
+  "https://checkout.tebex.io",
+  "https://creator.tebex.io",
 ];
 
 function buildAllowedOrigins() {
@@ -53,7 +58,7 @@ function createCorsMiddleware() {
       callback(new Error(`CORS: origin '${requestOrigin}' not allowed`));
     },
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Api-Key"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Api-Key", "X-Tebex-Signature"],
     credentials: true,
     maxAge: 86400,
   });
