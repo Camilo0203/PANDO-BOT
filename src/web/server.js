@@ -2,6 +2,7 @@
 
 const express = require("express");
 const vhost = require("vhost");
+const cors = require("cors");
 const logger = require("../utils/structuredLogger");
 const { createCorsMiddleware, createHelmetMiddleware } = require("./middleware/security");
 
@@ -40,6 +41,10 @@ function startWebServer({ healthState, buildInfo, getClient, port }) {
 
     // ── Security headers (applies to all routes) ──
     mainApp.use(createHelmetMiddleware());
+
+    // Open CORS for webhook endpoint (Tebex validation requires cross-origin access)
+    mainApp.use("/webhook-tebex", cors({ origin: true, credentials: false }));
+
     mainApp.use(createCorsMiddleware());
 
     // Sub-applications
@@ -59,12 +64,7 @@ function startWebServer({ healthState, buildInfo, getClient, port }) {
       next();
     });
 
-    // Temporarily handle POST webhook directly here for validation testing
-    mainApp.post("/webhook-tebex", express.raw({ type: "*/*" }), (req, res) => {
-      console.log("[TebexValidation] POST directo en server.js");
-      res.sendStatus(200);
-    });
-    // mainApp.use("/webhook-tebex", tebexApp); // descomentar despues de validar
+    mainApp.use("/webhook-tebex", tebexApp);
 
     // ── Virtual host routing ──
     // These patterns match the Host header (case-insensitive).
