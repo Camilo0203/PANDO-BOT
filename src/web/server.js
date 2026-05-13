@@ -50,11 +50,8 @@ function startWebServer({ healthState, buildInfo, getClient, port }) {
 
     // ── Ultra-simple webhook endpoint for Tebex validation ──
     // No middleware, no body parser, no CORS — just respond 200 to everything
+    // Express handles /webhook-tebex and /webhook-tebex/ automatically
     mainApp.all("/webhook-tebex", (req, res) => {
-      console.log(`[TebexWebhook] ${req.method} ${req.originalUrl} host=${req.headers.host} ua="${req.headers['user-agent']}"`);
-      res.status(200).end();
-    });
-    mainApp.all("/webhook-tebex/*", (req, res) => {
       console.log(`[TebexWebhook] ${req.method} ${req.originalUrl} host=${req.headers.host} ua="${req.headers['user-agent']}"`);
       res.status(200).end();
     });
