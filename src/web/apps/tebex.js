@@ -2,7 +2,10 @@
 
 const express = require("express");
 const crypto = require("crypto");
+const { EmbedBuilder } = require("discord.js");
 const { getDB } = require("../../utils/database");
+const { generateCode } = require("../../utils/proCodeService");
+const { createCode } = require("../../utils/database/proRedeemCodes");
 
 /**
  * Tebex Webhook App
@@ -217,6 +220,9 @@ function createTebexApp({ getClient }) {
     // Procesar async sin bloquear la respuesta a Tebex
     (async () => {
       try {
+        const client = getClient ? getClient() : null;
+        const discordUsername = payload?.customer?.username || payload?.player?.username || null;
+
         for (const pkg of packages) {
           const packageId = String(pkg?.id || pkg?.package_id || "");
           const tierInfo = getTierAndExpiry(packageId);
@@ -233,6 +239,55 @@ function createTebexApp({ getClient }) {
               tierInfo.expires_at,
               discordId
             );
+          }
+
+          // Generar código de activación de un solo uso
+          const durationDays = tierInfo.tier === "lifetime" ? null
+            : tierInfo.tier === "pro_monthly" ? 31
+            : 366;
+
+          const code = generateCode(12);
+          const codeExpiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+
+          await createCode({
+            code,
+            plan: "pro",
+            duration_days: durationDays,
+            created_by: "tebex_webhook",
+            expires_at: codeExpiresAt,
+            notes: `Tebex purchase · ${tierInfo.tier} · ${discordUsername || discordId || "unknown"}`,
+            source: "tebex_purchase",
+          });
+
+          console.log(`[TebexWebhook] Código generado para ${discordUsername || discordId || "?"}:`, code);
+
+          // Intentar DM al usuario de Discord
+          if (discordId && client) {
+            try {
+              const user = await client.users.fetch(discordId);
+              const planLabel = tierInfo.tier === "lifetime" ? "Lifetime"
+                : tierInfo.tier === "pro_monthly" ? "Monthly"
+                : "Yearly";
+
+              const embed = new EmbedBuilder()
+                .setColor(0x5865F2)
+                .setTitle("🎉 Thanks for your purchase!")
+                .setDescription(
+                  `Your **TON618 PRO ${planLabel}** activation code is ready.\n\n` +
+                  `**Code:** \`${code}\`\n\n` +
+                  `Go to your Discord server and run:\n` +
+                  `\`/premium activate ${code}\``
+                )
+                .addFields({ name: "Expires in", value: "90 days", inline: true },
+                           { name: "Plan", value: planLabel, inline: true })
+                .setFooter({ text: "TON618 Bot · One-time use code" })
+                .setTimestamp();
+
+              await user.send({ embeds: [embed] });
+              console.log(`[TebexWebhook] DM enviado a ${discordId} con código ${code}`);
+            } catch (dmErr) {
+              console.warn(`[TebexWebhook] No se pudo enviar DM a ${discordId}:`, dmErr.message);
+            }
           }
         }
       } catch (err) {

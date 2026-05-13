@@ -8,6 +8,7 @@ const {
   isPremiumStatusUnavailable,
   resolveGuildPremiumStatus,
 } = require("../../../utils/premiumStatus");
+const { processRedemption } = require("../../../utils/proCodeService");
 const logger = require("../../../utils/structuredLogger");
 
 function toDiscordDate(value) {
@@ -42,6 +43,27 @@ const data = withInlineDescriptionLocalizations(
         t("en", "premium.slash.info_description"),
         t("es", "premium.slash.info_description")
       )
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("activate")
+        .setDescription("Activate a PRO plan with a purchase code")
+        .setDescriptionLocalizations({
+          "es-ES": "Activa un plan PRO con un c\u00f3digo de compra",
+          "es-419": "Activa un plan PRO con un c\u00f3digo de compra",
+        })
+        .addStringOption((opt) =>
+          opt
+            .setName("code")
+            .setDescription("Activation code (e.g. ABCD-EFGH-IJKL)")
+            .setDescriptionLocalizations({
+              "es-ES": "C\u00f3digo de activaci\u00f3n (ej. ABCD-EFGH-IJKL)",
+              "es-419": "C\u00f3digo de activaci\u00f3n (ej. ABCD-EFGH-IJKL)",
+            })
+            .setRequired(true)
+            .setMinLength(4)
+            .setMaxLength(20)
+        )
     ),
   t("en", "premium.slash.description"),
   t("es", "premium.slash.description")
@@ -54,11 +76,91 @@ module.exports = {
     scope: "public",
   },
 
+  async handleActivate(interaction, language) {
+    if (!interaction.guildId) {
+      return interaction.reply({ content: t(language, "premium.guild_only"), flags: 64 });
+    }
+
+    const isOwner = interaction.user.id === interaction.guild?.ownerId;
+    if (!isOwner) {
+      return interaction.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(0xED4245)
+            .setTitle("\u274C Permission denied")
+            .setDescription("Only the server owner can activate a PRO plan."),
+        ],
+        flags: 64,
+      });
+    }
+
+    const code = interaction.options.getString("code", true).trim().toUpperCase();
+    await interaction.deferReply({ flags: 64 });
+
+    try {
+      const result = await processRedemption(
+        code,
+        interaction.user.id,
+        interaction.guildId,
+        interaction.client
+      );
+
+      if (!result.success) {
+        const reasons = {
+          not_found: "That code doesn't exist. Check it and try again.",
+          already_redeemed: "This code has already been used.",
+          expired: "This code has expired.",
+          guild_not_found: "This server hasn't set up the bot yet. Try running `/setup` first.",
+          activation_failed: "Code was valid but activation failed. Please contact support.",
+        };
+        return interaction.editReply({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0xED4245)
+              .setTitle("\u274C Activation failed")
+              .setDescription(reasons[result.error] || `Error: \`${result.error}\``),
+          ],
+        });
+      }
+
+      const { activation } = result;
+      const isLifetime = activation.planExpiresAt === null;
+      const expiresText = isLifetime
+        ? "\u221e Lifetime"
+        : `<t:${Math.floor(new Date(activation.planExpiresAt).getTime() / 1000)}:D>`;
+
+      return interaction.editReply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(0x57F287)
+            .setTitle("\u2705 PRO Activated!")
+            .setDescription(
+              `**${interaction.guild.name}** now has PRO${activation.isExtension ? " (extended)" : ""}.\n\n` +
+              `All PRO features are now available."`
+            )
+            .addFields(
+              { name: "Plan expires", value: expiresText, inline: true },
+              { name: "Activated by", value: `<@${interaction.user.id}>`, inline: true }
+            )
+            .setFooter({ text: "TON618 PRO \u00b7 Thank you for your support" })
+            .setTimestamp(),
+        ],
+      });
+    } catch (error) {
+      logger.error("premium", "activate error", { error: error?.message || String(error) });
+      return interaction.editReply({ content: t(language, "premium.error_generic") });
+    }
+  },
+
   async execute(interaction) {
     const guildId = interaction.guildId;
     const guildSettings = guildId ? await getGuildSettings(guildId) : null;
     const language = resolveInteractionLanguage(interaction, guildSettings);
     const subcommand = interaction.options.getSubcommand();
+
+    if (subcommand === "activate") {
+      return this.handleActivate(interaction, language);
+    }
 
     if (subcommand === "info") {
       const embed = new EmbedBuilder()

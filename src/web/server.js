@@ -49,6 +49,54 @@ function startWebServer({ healthState, buildInfo, getClient, port }) {
     const tebexApp = createTebexApp({ getClient });
     mainApp.use("/webhook-tebex", tebexApp);
 
+    // ── Tebex checkout proxy (server-side basket creation to avoid CORS) ──
+    const TEBEX_STORE_TOKEN = process.env.TEBEX_PUBLIC_TOKEN || "12ws8-71d9005ff427c9afbed0f6b9cd3c31b2b6869f2b";
+    const TEBEX_HEADLESS   = "https://headless.tebex.io/api";
+
+    mainApp.get("/api/checkout", async (req, res) => {
+      res.set("Access-Control-Allow-Origin", "https://store.ton618bot.xyz");
+      res.set("Access-Control-Allow-Methods", "GET, OPTIONS");
+
+      const pkgId = parseInt(req.query.pkg, 10);
+      if (!pkgId) return res.status(400).json({ error: "missing pkg" });
+
+      try {
+        const origin = "https://store.ton618bot.xyz";
+
+        // 1) Create basket
+        const basketRes = await fetch(`${TEBEX_HEADLESS}/accounts/${TEBEX_STORE_TOKEN}/baskets`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify({ complete_url: origin + "/#premium", cancel_url: origin + "/#premium" }),
+        });
+        const basketData = await basketRes.json();
+        const ident = basketData?.data?.ident;
+        if (!ident) return res.status(502).json({ error: "basket_creation_failed" });
+
+        // 2) Add package
+        const addRes = await fetch(`${TEBEX_HEADLESS}/baskets/${ident}/packages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify({ package_id: pkgId, quantity: 1 }),
+        });
+        if (!addRes.ok) {
+          logger.warn("tebex-proxy", `Package add failed: ${addRes.status} for pkg ${pkgId}`);
+          return res.status(502).json({ error: "package_add_failed", status: addRes.status });
+        }
+
+        return res.json({ ident });
+      } catch (err) {
+        logger.error("tebex-proxy", "Checkout proxy error", { error: err?.message });
+        return res.status(500).json({ error: "internal" });
+      }
+    });
+
+    mainApp.options("/api/checkout", (req, res) => {
+      res.set("Access-Control-Allow-Origin", "https://store.ton618bot.xyz");
+      res.set("Access-Control-Allow-Methods", "GET, OPTIONS");
+      res.sendStatus(204);
+    });
+
     // ── Virtual host routing ──
     // These patterns match the Host header (case-insensitive).
     // Requests with a matching Host are handled by the sub-app.
