@@ -48,12 +48,19 @@ function startWebServer({ healthState, buildInfo, getClient, port }) {
     const dashboardApp = createDashboardApp({ healthState, buildInfo, getClient });
     // const tebexApp = createTebexApp({ getClient });
 
-    // ── Ultra-simple webhook endpoint for Tebex validation ──
-    // No middleware, no body parser, no CORS — just respond 200 to everything
-    // Express handles /webhook-tebex and /webhook-tebex/ automatically
-    mainApp.all("/webhook-tebex", (req, res) => {
+    // ── Tebex webhook endpoint ──
+    // Tebex validation requires echoing back the id from the request body
+    // See: https://docs.tebex.io/developers/webhooks/overview
+    mainApp.all("/webhook-tebex", express.json(), (req, res) => {
       console.log(`[TebexWebhook] ${req.method} ${req.originalUrl} host=${req.headers.host} ua="${req.headers['user-agent']}"`);
-      res.status(200).end();
+      const id = req.body && req.body.id;
+      const type = req.body && req.body.type;
+      console.log(`[TebexWebhook] type=${type} id=${id}`);
+      if (type === "validation.webhook" && id) {
+        console.log(`[TebexWebhook] Validation webhook — respondiendo con id=${id}`);
+        return res.status(200).json({ id });
+      }
+      res.status(200).json({ id: id || null });
     });
 
     // ── Virtual host routing ──
