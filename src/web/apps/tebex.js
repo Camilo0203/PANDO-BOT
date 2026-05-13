@@ -193,9 +193,15 @@ function createTebexApp({ getClient }) {
       "recurring.payment",
     ].some(e => eventType.toLowerCase().includes("payment"));
 
+    // Validation webhook: must echo back the id
+    if (eventType === "validation.webhook") {
+      const id = req.body?.id;
+      console.log(`[TebexWebhook] Validation webhook — respondiendo con id=${id}`);
+      return res.status(200).json({ id });
+    }
+
     if (!isPaymentEvent) {
-      // validation.webhook and other non-payment events: bare 200 OK
-      return res.status(200).end();
+      return res.status(200).json({ id: req.body?.id || null });
     }
 
     const payload = req.body?.subject || req.body?.payload || req.body;

@@ -46,22 +46,8 @@ function startWebServer({ healthState, buildInfo, getClient, port }) {
     const landingApp = createLandingApp({ healthState, buildInfo, getClient });
     const healthApp = createHealthApp({ healthState, buildInfo, getClient });
     const dashboardApp = createDashboardApp({ healthState, buildInfo, getClient });
-    // const tebexApp = createTebexApp({ getClient });
-
-    // ── Tebex webhook endpoint ──
-    // Tebex validation requires echoing back the id from the request body
-    // See: https://docs.tebex.io/developers/webhooks/overview
-    mainApp.all("/webhook-tebex", express.json(), (req, res) => {
-      console.log(`[TebexWebhook] ${req.method} ${req.originalUrl} host=${req.headers.host} ua="${req.headers['user-agent']}"`);
-      const id = req.body && req.body.id;
-      const type = req.body && req.body.type;
-      console.log(`[TebexWebhook] type=${type} id=${id}`);
-      if (type === "validation.webhook" && id) {
-        console.log(`[TebexWebhook] Validation webhook — respondiendo con id=${id}`);
-        return res.status(200).json({ id });
-      }
-      res.status(200).json({ id: id || null });
-    });
+    const tebexApp = createTebexApp({ getClient });
+    mainApp.use("/webhook-tebex", tebexApp);
 
     // ── Virtual host routing ──
     // These patterns match the Host header (case-insensitive).
