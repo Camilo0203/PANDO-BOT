@@ -2,7 +2,6 @@
 
 const express = require("express");
 const vhost = require("vhost");
-const cors = require("cors");
 const logger = require("../utils/structuredLogger");
 const { createCorsMiddleware, createHelmetMiddleware } = require("./middleware/security");
 
@@ -39,32 +38,26 @@ function startWebServer({ healthState, buildInfo, getClient, port }) {
   return new Promise((resolve, reject) => {
     const mainApp = express();
 
-    // ── Security headers (applies to all routes) ──
+    // ── Security headers (applies to all routes except webhook) ──
     mainApp.use(createHelmetMiddleware());
-
-    // Open CORS for webhook endpoint (Tebex validation requires cross-origin access)
-    mainApp.use("/webhook-tebex", cors({ origin: true, credentials: false }));
-
     mainApp.use(createCorsMiddleware());
 
     // Sub-applications
     const landingApp = createLandingApp({ healthState, buildInfo, getClient });
     const healthApp = createHealthApp({ healthState, buildInfo, getClient });
     const dashboardApp = createDashboardApp({ healthState, buildInfo, getClient });
-    const tebexApp = createTebexApp({ getClient });
+    // const tebexApp = createTebexApp({ getClient });
 
-    // ── Global routes (before vhost - webhooks need no specific Host header) ──
-    // Tebex validation probe: respond bare 200 to GET/HEAD on /webhook-tebex and /webhook-tebex/
-    mainApp.use("/webhook-tebex", (req, res, next) => {
-      console.log(`[TebexValidation] ${req.method} ${req.originalUrl} host=${req.headers.host} ua="${req.headers['user-agent']}"`);
-      const isValidation = req.method === "GET" || req.method === "HEAD";
-      if (isValidation) {
-        return res.sendStatus(200);
-      }
-      next();
+    // ── Ultra-simple webhook endpoint for Tebex validation ──
+    // No middleware, no body parser, no CORS — just respond 200 to everything
+    mainApp.all("/webhook-tebex", (req, res) => {
+      console.log(`[TebexWebhook] ${req.method} ${req.originalUrl} host=${req.headers.host} ua="${req.headers['user-agent']}"`);
+      res.status(200).end();
     });
-
-    mainApp.use("/webhook-tebex", tebexApp);
+    mainApp.all("/webhook-tebex/*", (req, res) => {
+      console.log(`[TebexWebhook] ${req.method} ${req.originalUrl} host=${req.headers.host} ua="${req.headers['user-agent']}"`);
+      res.status(200).end();
+    });
 
     // ── Virtual host routing ──
     // These patterns match the Host header (case-insensitive).
