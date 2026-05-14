@@ -74,7 +74,7 @@ function startWebServer({ healthState, buildInfo, getClient, port }) {
         if (!ident) return res.status(502).json({ error: "basket_creation_failed" });
 
         // 2) Add package
-        await TEBEX_AXIOS.post(`/baskets/${ident}/packages`, { package_id: pkgId, quantity: 1 });
+        await TEBEX_AXIOS.post(`/accounts/${TEBEX_STORE_TOKEN}/baskets/${ident}/packages`, { package_id: pkgId, quantity: 1 });
 
         return res.json({ ident });
       } catch (err) {
