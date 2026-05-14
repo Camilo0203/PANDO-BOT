@@ -18,6 +18,8 @@ const BASE_ORIGINS = [
   "https://dash.ton618bot.xyz",
   "https://status.ton618bot.xyz",
   "https://ton618-status.squareweb.app",
+  // Tebex store frontend
+  "https://store.ton618bot.xyz",
   // Tebex origins for webhook validation
   "https://tebex.io",
   "https://www.tebex.io",
