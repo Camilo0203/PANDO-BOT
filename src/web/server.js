@@ -50,8 +50,10 @@ function startWebServer({ healthState, buildInfo, getClient, port }) {
     mainApp.use("/webhook-tebex", tebexApp);
 
     // ── Tebex checkout proxy (server-side basket creation to avoid CORS) ──
+    const axios        = require("axios");
     const TEBEX_STORE_TOKEN = process.env.TEBEX_PUBLIC_TOKEN || "12ws8-71d9005ff427c9afbed0f6b9cd3c31b2b6869f2b";
     const TEBEX_HEADLESS   = "https://headless.tebex.io/api";
+    const TEBEX_AXIOS  = axios.create({ baseURL: TEBEX_HEADLESS, timeout: 10000, headers: { "Content-Type": "application/json", "Accept": "application/json" } });
 
     mainApp.get("/api/checkout", async (req, res) => {
       res.set("Access-Control-Allow-Origin", "https://store.ton618bot.xyz");
@@ -64,30 +66,22 @@ function startWebServer({ healthState, buildInfo, getClient, port }) {
         const origin = "https://store.ton618bot.xyz";
 
         // 1) Create basket
-        const basketRes = await fetch(`${TEBEX_HEADLESS}/accounts/${TEBEX_STORE_TOKEN}/baskets`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Accept": "application/json" },
-          body: JSON.stringify({ complete_url: origin + "/#premium", cancel_url: origin + "/#premium" }),
+        const { data: basketData } = await TEBEX_AXIOS.post(`/accounts/${TEBEX_STORE_TOKEN}/baskets`, {
+          complete_url: origin + "/#premium",
+          cancel_url:   origin + "/#premium",
         });
-        const basketData = await basketRes.json();
         const ident = basketData?.data?.ident;
         if (!ident) return res.status(502).json({ error: "basket_creation_failed" });
 
         // 2) Add package
-        const addRes = await fetch(`${TEBEX_HEADLESS}/baskets/${ident}/packages`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Accept": "application/json" },
-          body: JSON.stringify({ package_id: pkgId, quantity: 1 }),
-        });
-        if (!addRes.ok) {
-          logger.warn("tebex-proxy", `Package add failed: ${addRes.status} for pkg ${pkgId}`);
-          return res.status(502).json({ error: "package_add_failed", status: addRes.status });
-        }
+        await TEBEX_AXIOS.post(`/baskets/${ident}/packages`, { package_id: pkgId, quantity: 1 });
 
         return res.json({ ident });
       } catch (err) {
-        logger.error("tebex-proxy", "Checkout proxy error", { error: err?.message });
-        return res.status(500).json({ error: "internal" });
+        const status = err?.response?.status;
+        const msg    = err?.response?.data || err?.message;
+        logger.warn("tebex-proxy", `Checkout proxy error pkg=${pkgId}`, { status, error: String(msg).slice(0, 200) });
+        return res.status(502).json({ error: "tebex_error", status, detail: String(msg).slice(0, 100) });
       }
     });
 
