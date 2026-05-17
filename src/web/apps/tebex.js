@@ -211,7 +211,20 @@ function createTebexApp({ getClient }) {
     const packages = extractPackages(req.body);
     const guildId = extractGuildId(req.body);
     const player = payload?.player || payload?.customer || {};
-    const discordId = player?.uuid || player?.id || null;
+
+    // Extraer discord_id desde variables del producto si no viene en customer
+    function getDiscordIdFromVariables(pkgs) {
+      for (const pkg of pkgs) {
+        const vars = pkg?.variables || pkg?.custom_fields || [];
+        if (Array.isArray(vars)) {
+          const v = vars.find(v => v?.identifier === "discord_id" || v?.name === "discord_id");
+          if (v?.option || v?.value) return String(v.option || v.value);
+        }
+      }
+      return null;
+    }
+
+    const discordId = player?.uuid || player?.id || getDiscordIdFromVariables(packages) || null;
 
     if (!guildId) {
       console.warn("[TebexWebhook] No se encontró guild_id en custom fields del checkout");
