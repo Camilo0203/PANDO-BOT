@@ -89,7 +89,7 @@ async function redeemCode(code, userId, guildId) {
 
   // Atomic claim: only succeeds if the code exists, is not redeemed, and is not expired.
   // Using findOneAndUpdate prevents two concurrent requests from both claiming the same code.
-  const { value: codeData } = await codesCollection.findOneAndUpdate(
+  const codeData = await codesCollection.findOneAndUpdate(
     {
       code: code.toUpperCase(),
       redeemed: false,
