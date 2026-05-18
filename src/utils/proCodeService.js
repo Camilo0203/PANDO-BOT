@@ -7,7 +7,7 @@
 
 const crypto = require("crypto");
 const { redeemCode, rollbackRedemption } = require("./database/proRedeemCodes");
-const { settings } = require("./database");
+const { settings, getDB } = require("./database");
 const logger = require("./structuredLogger");
 const { buildCommercialSettingsPatch, resolveCommercialState } = require("./commercial");
 const { assignSupportRole, notifyRedemption } = require("./supportProRoles");
@@ -136,6 +136,37 @@ async function activateProInGuild(redemption) {
     });
 
     await settings.update(guildId, patch);
+
+    // Sync premium_cache so premiumService reflects activation immediately
+    try {
+      const db = getDB();
+      if (db) {
+        const tier = durationDays === null ? "lifetime" : durationDays <= 31 ? "pro_monthly" : "pro_yearly";
+        const cacheNow = new Date();
+        await db.collection("premium_cache").updateOne(
+          { guild_id: guildId },
+          {
+            $set: {
+              guild_id: guildId,
+              has_premium: true,
+              tier,
+              lifetime: durationDays === null,
+              expires_at: newExpiresAt ? newExpiresAt.toISOString() : null,
+              owner_user_id: redemption.redeemed_by || null,
+              app_cache_expires_at: new Date(cacheNow.getTime() + 5 * 60 * 1000),
+              ttl_expires_at: newExpiresAt
+                ? new Date(newExpiresAt.getTime() + 60 * 60 * 1000)
+                : new Date(cacheNow.getTime() + 10 * 365 * 24 * 60 * 60 * 1000),
+              cached_at: cacheNow,
+              source: "code_redemption",
+            },
+          },
+          { upsert: true }
+        );
+      }
+    } catch (cacheErr) {
+      logger.warn("proCodeService", "Failed to sync premium_cache after activation (non-critical)", { error: cacheErr?.message });
+    }
 
     return {
       success: true,

@@ -198,6 +198,14 @@ async function createIndexes() {
     await db.collection("pro_redemptions").createIndex({ redeemed_by: 1, redeemed_at: -1 });
     await db.collection("pro_redemptions").createIndex({ redeemed_guild_id: 1 });
 
+    // Indexes for webhook idempotency (TTL 90 days)
+    await db.collection("webhook_events").createIndex({ payment_id: 1 }, { unique: true }).catch((err) => {
+      logger.warn('database.mongo', 'Failed to create webhook_events payment_id index', { error: err?.message });
+    });
+    await db.collection("webhook_events").createIndex({ processed_at: 1 }, { expireAfterSeconds: 7776000 }).catch((err) => {
+      logger.warn('database.mongo', 'Failed to create webhook_events TTL index', { error: err?.message });
+    });
+
     logger.info('databaseCore', 'MongoDB indexes created');
   } catch (error) {
     logger.error('databaseCore', 'Error creating MongoDB indexes', { error: error?.message || String(error) });

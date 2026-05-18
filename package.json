@@ -38,6 +38,7 @@
     "discord.js": "^14.25.1",
     "dotenv": "^16.6.1",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
     "helmet": "^8.1.0",
     "kazagumo": "^3.4.3",
     "mongodb": "^7.1.0",

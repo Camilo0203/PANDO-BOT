@@ -68,10 +68,24 @@ function createCorsMiddleware() {
 
 /**
  * Helmet middleware — sets secure HTTP headers.
+ * CSP permite inline scripts/styles para el dashboard interno.
+ * Para la landing pública se heredan estas mismas directivas (aceptable).
  */
 function createHelmetMiddleware() {
   return helmet({
-    contentSecurityPolicy: false, // disabled — the dashboard serves inline scripts
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://fonts.gstatic.com"],
+        fontSrc: ["'self'", "https://fonts.googleapis.com", "https://fonts.gstatic.com"],
+        imgSrc: ["'self'", "data:", "https://cdn.discordapp.com", "https://cdn.tebex.io"],
+        connectSrc: ["'self'", "https://headless.tebex.io", "https://checkout.tebex.io", "https://ton618bot.xyz", "https://*.ton618bot.xyz"],
+        frameSrc: ["'none'"],
+        objectSrc: ["'none'"],
+        upgradeInsecureRequests: [],
+      },
+    },
     crossOriginEmbedderPolicy: false,
   });
 }

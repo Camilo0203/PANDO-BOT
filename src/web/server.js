@@ -51,11 +51,20 @@ function startWebServer({ healthState, buildInfo, getClient, port }) {
 
     // ── Tebex checkout proxy (server-side basket creation to avoid CORS) ──
     const axios        = require("axios");
+    const rateLimit    = require("express-rate-limit");
     const TEBEX_STORE_TOKEN = process.env.TEBEX_PUBLIC_TOKEN || "12ws8-71d9005ff427c9afbed0f6b9cd3c31b2b6869f2b";
     const TEBEX_HEADLESS   = "https://headless.tebex.io/api";
     const TEBEX_AXIOS  = axios.create({ baseURL: TEBEX_HEADLESS, timeout: 10000, headers: { "Content-Type": "application/json", "Accept": "application/json" } });
 
-    mainApp.get("/api/checkout", async (req, res) => {
+    const checkoutLimiter = rateLimit({
+      windowMs: 60 * 1000,
+      max: 10,
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: { error: "Too many checkout requests, please try again later." },
+    });
+
+    mainApp.get("/api/checkout", checkoutLimiter, async (req, res) => {
       res.set("Access-Control-Allow-Origin", "https://store.ton618bot.xyz");
       res.set("Access-Control-Allow-Methods", "GET, OPTIONS");
 

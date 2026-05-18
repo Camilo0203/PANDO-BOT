@@ -32,7 +32,7 @@ function createDashboardApp({ healthState, buildInfo, getClient }) {
   }
   if (DASH_API_KEY) {
     app.use((req, res, next) => {
-      const provided = req.headers["x-api-key"] || req.query.apiKey;
+      const provided = req.headers["x-api-key"];
       if (provided !== DASH_API_KEY) {
         return res.status(401).json({ error: "Unauthorized" });
       }
