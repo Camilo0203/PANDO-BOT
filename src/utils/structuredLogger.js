@@ -73,7 +73,7 @@ function sanitizeMetaForProduction(meta) {
   if (process.env.NODE_ENV !== 'production') return meta;
   if (!meta || typeof meta !== 'object') return meta;
 
-  const sensitiveKeys = ['stack', 'error', 'error_stack', 'trace', 'token', 'password', 'secret', 'key', 'auth'];
+  const sensitiveKeys = ['token', 'password', 'secret', 'authorization', 'credential', 'apikey', 'api_key'];
   const sanitized = {};
 
   for (const [key, value] of Object.entries(meta)) {

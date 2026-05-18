@@ -230,42 +230,65 @@ async function runDataRetentionForGuild(guildId, client = null) {
 
 /**
  * Implementación de limpieza de datos huérfanos
+ *
+ * CORRECCIÓN NF3: guild.members.cache es una caché PARCIAL — sólo contiene
+ * los miembros vistos desde el último reinicio del shard. En guilds grandes,
+ * puede tener 50 entradas de 5000 miembros reales, generando falsos positivos
+ * masivos que destruyen datos de verificación de usuarios legítimos.
+ *
+ * SOLUCIÓN: Verificar cada candidato individualmente contra la API de Discord
+ * con force:true para saltarse la caché. Se procesa en lotes para no saturar
+ * el rate limit de Discord (50/s por defecto por route).
  */
 async function cleanupOrphanedUserDataImpl(guildId, client) {
   const db = getDB();
   let deletedCount = 0;
+  const MAX_PER_RUN = 50;    // Máximo de candidatos a verificar por ejecución
+  const BATCH_SIZE = 10;     // Requests paralelas por lote
+  const INTER_BATCH_MS = 400; // Pausa entre lotes (ms) para respetar rate limits
 
-  // Obtener miembros actuales del guild
-  let currentMemberIds = new Set();
+  let guild;
   try {
-    const guild = await client.guilds.fetch(guildId);
-    // Solo obtener IDs de miembros disponibles en cache
-    currentMemberIds = new Set(guild.members.cache.keys());
-
-    // Si hay pocos en cache, no limpiar para evitar falsos positivos
-    if (currentMemberIds.size < 10) {
-      return 0;
-    }
+    guild = await client.guilds.fetch(guildId);
   } catch {
-    // Guild no disponible, skip
     return 0;
   }
 
-  // Limpiar member states de usuarios que ya no están
-  const orphanedStates = await db.collection("verifMemberStates").find({
-    guild_id: guildId,
-  }, { projection: { user_id: 1 } }).toArray();
+  const records = await db.collection("verifMemberStates").find(
+    { guild_id: guildId },
+    { projection: { user_id: 1 } }
+  ).limit(MAX_PER_RUN).toArray();
 
-  const orphanedUserIds = orphanedStates
-    .filter(s => !currentMemberIds.has(s.user_id))
-    .map(s => s.user_id);
+  if (records.length === 0) return 0;
 
-  if (orphanedUserIds.length > 0) {
+  const orphanedIds = [];
+
+  for (let i = 0; i < records.length; i += BATCH_SIZE) {
+    const batch = records.slice(i, i + BATCH_SIZE);
+
+    await Promise.all(
+      batch.map(async (record) => {
+        try {
+          // force: true omite guild.members.cache y hace la request real a Discord.
+          // Si el usuario NO está en el guild, Discord devuelve 404 → lanza error.
+          await guild.members.fetch({ user: record.user_id, force: true });
+        } catch {
+          orphanedIds.push(record.user_id);
+        }
+      })
+    );
+
+    if (i + BATCH_SIZE < records.length) {
+      await new Promise((r) => setTimeout(r, INTER_BATCH_MS));
+    }
+  }
+
+  if (orphanedIds.length > 0) {
     await db.collection("verifMemberStates").deleteMany({
       guild_id: guildId,
-      user_id: { $in: orphanedUserIds },
+      user_id: { $in: orphanedIds },
     });
-    deletedCount += orphanedUserIds.length;
+    deletedCount += orphanedIds.length;
   }
 
   return deletedCount;

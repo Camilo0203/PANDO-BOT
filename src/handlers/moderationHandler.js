@@ -69,9 +69,17 @@ class ModerationHandler {
         return;
       }
 
-      // Verificar que el usuario esté baneado
-      const bans = await guild.bans.fetch().catch(() => null);
-      if (!bans || !bans.has(ban.user_id)) {
+      // Verificar que el usuario esté baneado consultando SOLO su entry.
+      // guild.bans.fetch() sin args descarga TODA la lista → API flood + memoria.
+      // guild.bans.fetch(userId) hace una sola request GET /guilds/:id/bans/:userId.
+      let isBanned = false;
+      try {
+        await guild.bans.fetch(ban.user_id);
+        isBanned = true;
+      } catch {
+        isBanned = false;
+      }
+      if (!isBanned) {
         logger.info("moderation.handler", "User is not banned, removing stale record", { guildId: ban.guild_id, userId: ban.user_id });
         await tempBans.remove(ban.guild_id, ban.user_id);
         return;

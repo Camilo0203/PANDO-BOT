@@ -28,6 +28,7 @@ const {
 const buttons = new Collection();
 const selects = new Collection();
 const modals = new Collection();
+let handlersLoaded = false;
 const SETTINGS_MUTATION_COMMANDS = new Set(["config", "setup", "verify"]);
 const SETTINGS_MUTATION_CUSTOM_ID_PREFIXES = ["cfg_center_", "setup_cmd_panel_"];
 
@@ -267,6 +268,7 @@ async function applyInteractionRateLimit(interaction) {
 }
 
 function loadHandlers() {
+  handlersLoaded = true; // Marcar ANTES del I/O: evita reinvocaciones concurrentes
   const buttonsPath = path.join(__dirname, "../interactions/buttons");
   if (fs.existsSync(buttonsPath)) {
     const buttonFiles = fs.readdirSync(buttonsPath).filter((file) => file.endsWith(".js"));
@@ -358,7 +360,7 @@ module.exports = {
   name: "interactionCreate",
   async execute(interaction, client) {
     try {
-      if (buttons.size === 0 && selects.size === 0 && modals.size === 0) {
+      if (!handlersLoaded) {
         loadHandlers();
       }
 

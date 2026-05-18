@@ -468,9 +468,12 @@ async fetchPremiumFromAPI(guildId) {
     
     if (!(feature in tierFeatures)) {
       logger.warn('premiumService', 'Unknown feature requested', { feature });
+      return false;
     }
-    
-    return tierFeatures[feature] === true;
+
+    const val = tierFeatures[feature];
+    // Boolean true → access granted; positive number → has capacity; false/0/null → denied
+    return val === true || (typeof val === 'number' && val > 0);
   }
 
   /**

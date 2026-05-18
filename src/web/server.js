@@ -52,9 +52,14 @@ function startWebServer({ healthState, buildInfo, getClient, port }) {
     // ── Tebex checkout proxy (server-side basket creation to avoid CORS) ──
     const axios        = require("axios");
     const rateLimit    = require("express-rate-limit");
-    const TEBEX_STORE_TOKEN = process.env.TEBEX_PUBLIC_TOKEN || "12ws8-71d9005ff427c9afbed0f6b9cd3c31b2b6869f2b";
+    const TEBEX_STORE_TOKEN = process.env.TEBEX_PUBLIC_TOKEN;
     const TEBEX_HEADLESS   = "https://headless.tebex.io/api";
     const TEBEX_AXIOS  = axios.create({ baseURL: TEBEX_HEADLESS, timeout: 10000, headers: { "Content-Type": "application/json", "Accept": "application/json" } });
+    // Whitelist de package IDs válidos — cualquier otro ID se rechaza con 400
+    const TEBEX_ALLOWED_PKG_IDS = new Set(
+      (process.env.TEBEX_ALLOWED_PKG_IDS || "7434172,7434175,7434185")
+        .split(",").map(s => parseInt(s.trim(), 10)).filter(Boolean)
+    );
 
     const checkoutLimiter = rateLimit({
       windowMs: 60 * 1000,
@@ -68,8 +73,15 @@ function startWebServer({ healthState, buildInfo, getClient, port }) {
       res.set("Access-Control-Allow-Origin", "https://store.ton618bot.xyz");
       res.set("Access-Control-Allow-Methods", "GET, OPTIONS");
 
+      if (!TEBEX_STORE_TOKEN) {
+        logger.error("tebex-proxy", "TEBEX_PUBLIC_TOKEN not configured");
+        return res.status(503).json({ error: "checkout_unavailable" });
+      }
+
       const pkgId = parseInt(req.query.pkg, 10);
-      if (!pkgId) return res.status(400).json({ error: "missing pkg" });
+      if (!pkgId || !TEBEX_ALLOWED_PKG_IDS.has(pkgId)) {
+        return res.status(400).json({ error: "invalid pkg" });
+      }
 
       try {
         const origin = "https://store.ton618bot.xyz";

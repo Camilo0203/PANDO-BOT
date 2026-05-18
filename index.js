@@ -357,8 +357,8 @@ async function startBot() {
       stack: error?.stack,
     });
     recordError("process.unhandledRejection");
-    // Exit on unhandled rejection for stability
-    setTimeout(() => process.exit(1), 1000);
+    // Trigger graceful shutdown instead of abrupt exit
+    shutdownGracefully("unhandledRejection").catch(() => process.exit(1));
   });
   process.on("uncaughtException", (error) => {
     logger.error("process.uncaughtException", error?.message || "Uncaught exception", {
@@ -486,6 +486,8 @@ async function startBot() {
       "discord-login",
       async () => {
         await client.login(process.env.DISCORD_TOKEN);
+        // Signal PM2 that the process is ready (requires wait_ready: true in ecosystem.config.js)
+        if (typeof process.send === "function") process.send("ready");
       },
       {
         startMessage: "Iniciando sesion con Discord...",

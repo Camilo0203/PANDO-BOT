@@ -59,22 +59,17 @@ function createTebexApp({ getClient }) {
     }
   }
 
-  // --- Idempotencia: marcar evento como procesado ---
-  async function markEventProcessed(paymentId, eventType, meta = {}) {
+  // --- Idempotencia atómica: insertOne lanza 11000 si el payment_id ya existe ---
+  // El índice único en webhook_events.payment_id (core.js:202) garantiza atomicidad.
+  // updateOne+upsert NO es atómico: dos requests concurrentes pueden pasar ambas.
+  async function claimEvent(paymentId, eventType) {
     const db = getDB();
-    if (!db) return;
-    await db.collection(WEBHOOK_EVENTS_COLLECTION).updateOne(
-      { payment_id: String(paymentId) },
-      { $set: { payment_id: String(paymentId), event_type: eventType, processed_at: new Date(), ...meta } },
-      { upsert: true }
-    );
-  }
-
-  async function isEventAlreadyProcessed(paymentId) {
-    const db = getDB();
-    if (!db) return false;
-    const existing = await db.collection(WEBHOOK_EVENTS_COLLECTION).findOne({ payment_id: String(paymentId) });
-    return !!existing;
+    if (!db) return true; // Sin DB no podemos garantizar idempotencia — dejar pasar
+    await db.collection(WEBHOOK_EVENTS_COLLECTION).insertOne({
+      payment_id: String(paymentId),
+      event_type: eventType,
+      processed_at: new Date(),
+    });
   }
 
   // --- Helper: extraer guild_id ---
@@ -150,6 +145,67 @@ function createTebexApp({ getClient }) {
     }
   }
 
+  // --- Helper: sincronizar compra Tebex → Supabase guild_subscriptions ---
+  // Garantiza que el premium persista en PostgreSQL cuando la caché MongoDB expire.
+  // No crítico: si falla, el bot sigue funcionando con la caché MongoDB durante la sesión.
+  async function syncTebexPurchaseToSupabase(guildId, tierInfo, discordId, paymentId) {
+    const supabaseUrl = (process.env.SUPABASE_URL || "").trim().replace(/\/+$/, "");
+    const supabaseKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+
+    if (!supabaseUrl || !supabaseKey) return;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    const subscription = {
+      guild_id: guildId,
+      discord_user_id: discordId || "tebex_unknown",
+      provider: "tebex",
+      provider_order_id: String(paymentId),
+      provider_customer_id: discordId || null,
+      provider_subscription_id: null,
+      plan_key: tierInfo.tier,
+      billing_type: "one_time",
+      status: "active",
+      premium_enabled: true,
+      cancel_at_period_end: false,
+      renews_at: null,
+      ends_at: tierInfo.lifetime ? null : tierInfo.expires_at,
+      lifetime: !!tierInfo.lifetime,
+      is_founding_member: false,
+    };
+
+    try {
+      const response = await fetch(`${supabaseUrl}/rest/v1/guild_subscriptions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": supabaseKey,
+          "Authorization": `Bearer ${supabaseKey}`,
+          "Prefer": "return=minimal",
+        },
+        body: JSON.stringify(subscription),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        const detail = await response.text().catch(() => "");
+        logger.warn("tebex", "Supabase sync respondió con error (no crítico)", {
+          status: response.status,
+          paymentId,
+          detail: detail.slice(0, 120),
+        });
+        return;
+      }
+
+      logger.info("tebex", "Compra sincronizada a Supabase", { guildId, tier: tierInfo.tier, paymentId });
+    } catch (err) {
+      clearTimeout(timeout);
+      logger.warn("tebex", "Error al sincronizar a Supabase (no crítico)", { error: err.message, paymentId });
+    }
+  }
+
   // --- Helper: revocar premium (refund/reversal) ---
   async function revokePremium(guildId, reason) {
     try {
@@ -203,15 +259,19 @@ function createTebexApp({ getClient }) {
       return res.status(200).json({ id: paymentId || null });
     }
 
-    // Idempotencia: no procesar el mismo payment_id dos veces
-    if (paymentId && await isEventAlreadyProcessed(paymentId)) {
-      logger.info("tebex", `Evento duplicado ignorado`, { paymentId, eventType });
-      return res.status(200).end();
-    }
-
-    // Marcar como procesado ANTES de actuar (evita race conditions en reintentos)
+    // Idempotencia atómica: sólo un procesador puede ganar el insertOne.
+    // Si payment_id ya existe, MongoDB lanza error 11000 → retornar 200 sin reprocesar.
     if (paymentId) {
-      await markEventProcessed(paymentId, eventType, { event_type: eventType });
+      try {
+        await claimEvent(paymentId, eventType);
+      } catch (insertErr) {
+        if (insertErr.code === 11000) {
+          logger.info("tebex", "Evento duplicado ignorado", { paymentId, eventType });
+          return res.status(200).end();
+        }
+        logger.error("tebex", "Error en idempotencia webhook", { error: insertErr.message, paymentId });
+        return res.status(200).end();
+      }
     }
 
     const payload = req.body?.subject || req.body?.payload || req.body;
@@ -262,6 +322,7 @@ function createTebexApp({ getClient }) {
 
           if (guildId) {
             await savePremiumToCache(guildId, tierInfo.tier, tierInfo.lifetime, tierInfo.expires_at, discordId);
+            await syncTebexPurchaseToSupabase(guildId, tierInfo, discordId, paymentId);
           }
 
           const durationDays = tierInfo.tier === "lifetime" ? null : tierInfo.tier === "pro_monthly" ? 31 : 366;

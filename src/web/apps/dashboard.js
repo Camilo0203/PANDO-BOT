@@ -2,6 +2,7 @@
 
 const express = require("express");
 const path = require("path");
+const crypto = require("crypto");
 const { createCorsMiddleware } = require("../middleware/security");
 
 /**
@@ -32,8 +33,16 @@ function createDashboardApp({ healthState, buildInfo, getClient }) {
   }
   if (DASH_API_KEY) {
     app.use((req, res, next) => {
-      const provided = req.headers["x-api-key"];
-      if (provided !== DASH_API_KEY) {
+      const provided = req.headers["x-api-key"] || "";
+      let authorized = false;
+      try {
+        const a = Buffer.alloc(64);
+        const b = Buffer.alloc(64);
+        a.write(provided.slice(0, 64));
+        b.write(DASH_API_KEY.slice(0, 64));
+        authorized = crypto.timingSafeEqual(a, b) && provided.length === DASH_API_KEY.length;
+      } catch { authorized = false; }
+      if (!authorized) {
         return res.status(401).json({ error: "Unauthorized" });
       }
       next();
@@ -56,6 +65,7 @@ function createDashboardApp({ healthState, buildInfo, getClient }) {
     const version = buildInfo?.version || "3.0.0";
     const commit = buildInfo?.shortCommit || "dev";
     const tag = buildInfo?.deployTag || "local";
+    const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
 
     res.send(`<!DOCTYPE html>
 <html lang="en">
@@ -99,7 +109,7 @@ function createDashboardApp({ healthState, buildInfo, getClient }) {
       </nav>
 
       <div class="sidebar-footer">
-        <span id="build-label">v${version} · ${commit}</span>
+        <span id="build-label">v${esc(version)} · ${esc(commit)}</span>
       </div>
     </aside>
 
@@ -230,19 +240,19 @@ function createDashboardApp({ healthState, buildInfo, getClient }) {
             <div class="kpi-grid" style="margin-top:0.5rem;">
               <div class="kpi-card">
                 <div class="kpi-label">Version</div>
-                <div class="kpi-value" style="font-size:1.2rem">${version}</div>
+                <div class="kpi-value" style="font-size:1.2rem">${esc(version)}</div>
               </div>
               <div class="kpi-card">
                 <div class="kpi-label">Commit</div>
-                <div class="kpi-value" style="font-size:1.2rem">${commit}</div>
+                <div class="kpi-value" style="font-size:1.2rem">${esc(commit)}</div>
               </div>
               <div class="kpi-card">
                 <div class="kpi-label">Environment</div>
-                <div class="kpi-value" style="font-size:1.2rem">${tag}</div>
+                <div class="kpi-value" style="font-size:1.2rem">${esc(tag)}</div>
               </div>
               <div class="kpi-card">
                 <div class="kpi-label">Node.js</div>
-                <div class="kpi-value" style="font-size:1.2rem">${process.version}</div>
+                <div class="kpi-value" style="font-size:1.2rem">${esc(process.version)}</div>
               </div>
             </div>
           </div>
@@ -251,7 +261,7 @@ function createDashboardApp({ healthState, buildInfo, getClient }) {
 
       <!-- Footer -->
       <div style="margin-top:auto;padding-top:2rem;font-size:0.72rem;color:var(--text-ghost);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
-        <span>TON618 Bot Dashboard · <span id="build-footer">v${version} · ${commit}</span></span>
+        <span>TON618 Bot Dashboard · <span id="build-footer">v${esc(version)} · ${esc(commit)}</span></span>
         <span><a href="/api/stats" style="color:var(--text-ghost);text-decoration:none;">API</a> · <a href="/api/guilds" style="color:var(--text-ghost);text-decoration:none;">Guilds</a></span>
       </div>
     </main>
@@ -282,7 +292,6 @@ function createDashboardApp({ healthState, buildInfo, getClient }) {
       id: g.id,
       name: g.name,
       memberCount: g.memberCount,
-      ownerId: g.ownerId,
       joinedAt: g.joinedAt?.toISOString() || null,
     }));
     res.json({ guilds });
