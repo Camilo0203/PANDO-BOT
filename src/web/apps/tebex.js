@@ -259,21 +259,6 @@ function createTebexApp({ getClient }) {
       return res.status(200).json({ id: paymentId || null });
     }
 
-    // Idempotencia atómica: sólo un procesador puede ganar el insertOne.
-    // Si payment_id ya existe, MongoDB lanza error 11000 → retornar 200 sin reprocesar.
-    if (paymentId) {
-      try {
-        await claimEvent(paymentId, eventType);
-      } catch (insertErr) {
-        if (insertErr.code === 11000) {
-          logger.info("tebex", "Evento duplicado ignorado", { paymentId, eventType });
-          return res.status(200).end();
-        }
-        logger.error("tebex", "Error en idempotencia webhook", { error: insertErr.message, paymentId });
-        return res.status(200).end();
-      }
-    }
-
     const payload = req.body?.subject || req.body?.payload || req.body;
     const packages = extractPackages(req.body);
     const guildId = extractGuildId(req.body);
@@ -284,93 +269,124 @@ function createTebexApp({ getClient }) {
       logger.warn("tebex", "No se encontró guild_id en custom fields", { paymentId, eventType });
     }
 
-    // Procesar async sin bloquear respuesta a Tebex
-    (async () => {
-      try {
-        const client = getClient ? getClient() : null;
+    // IDEMPOTENCIA ESTRICTA: el insertOne debe completarse con éxito ANTES de cualquier procesamiento.
+    // El procesamiento (IIFE) se lanza ÚNICAMENTE dentro del bloque try, después del insertOne.
+    // Si insertOne falla por cualquier razón (E11000 u otro), el catch aborta inmediatamente.
+    if (!paymentId) {
+      logger.error("tebex", "Webhook sin paymentId — abortando, no se puede garantizar idempotencia", { eventType });
+      return res.status(200).end();
+    }
 
-        // --- REFUND / REVERSAL: desactivar PRO ---
-        if (isRefundEvent) {
-          if (guildId) {
-            await revokePremium(guildId, eventType);
-            if (client && discordId) {
+    const db = getDB();
+    if (!db) {
+      logger.error("tebex", "Sin conexión DB — abortando, no se puede garantizar idempotencia", { paymentId });
+      return res.status(200).end();
+    }
+
+    try {
+      await db.collection(WEBHOOK_EVENTS_COLLECTION).insertOne({
+        payment_id: String(paymentId),
+        event_type: eventType,
+        processed_at: new Date(),
+      });
+
+      // ✅ insertOne exitoso: SOLO AQUÍ se autoriza el procesamiento
+      (async () => {
+        try {
+          const client = getClient ? getClient() : null;
+
+          // --- REFUND / REVERSAL: desactivar PRO ---
+          if (isRefundEvent) {
+            if (guildId) {
+              await revokePremium(guildId, eventType);
+              if (client && discordId) {
+                try {
+                  const user = await client.users.fetch(discordId);
+                  await user.send({ embeds: [
+                    new EmbedBuilder()
+                      .setColor(0xED4245)
+                      .setTitle("⚠️ PRO subscription cancelled")
+                      .setDescription("Your TON618 PRO subscription has been refunded or reversed. PRO features have been deactivated.")
+                      .setTimestamp(),
+                  ] });
+                } catch { /* DM puede fallar */ }
+              }
+            }
+            return;
+          }
+
+          // --- PAYMENT COMPLETED: generar código y enviar DM ---
+          const discordUsername = payload?.customer?.username || payload?.player?.username || null;
+
+          for (const pkg of packages) {
+            const packageId = String(pkg?.id || pkg?.package_id || "");
+            const tierInfo = getTierAndExpiry(packageId);
+            if (!tierInfo) {
+              logger.warn("tebex", `Paquete sin mapeo de tier`, { packageId });
+              continue;
+            }
+
+            if (guildId) {
+              await savePremiumToCache(guildId, tierInfo.tier, tierInfo.lifetime, tierInfo.expires_at, discordId);
+              await syncTebexPurchaseToSupabase(guildId, tierInfo, discordId, paymentId);
+            }
+
+            const durationDays = tierInfo.tier === "lifetime" ? null : tierInfo.tier === "pro_monthly" ? 31 : 366;
+            const code = generateCode(12);
+            const codeExpiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+
+            await createCode({
+              code,
+              plan: "pro",
+              duration_days: durationDays,
+              created_by: "tebex_webhook",
+              expires_at: codeExpiresAt,
+              notes: `Tebex · ${tierInfo.tier} · ${discordUsername || discordId || "unknown"} · payment=${paymentId}`,
+              source: "tebex_purchase",
+            });
+
+            logger.info("tebex", `Código generado`, { code, discordId, tier: tierInfo.tier });
+
+            if (discordId && client) {
               try {
                 const user = await client.users.fetch(discordId);
+                const planLabel = tierInfo.tier === "lifetime" ? "Lifetime" : tierInfo.tier === "pro_monthly" ? "Monthly" : "Yearly";
                 await user.send({ embeds: [
                   new EmbedBuilder()
-                    .setColor(0xED4245)
-                    .setTitle("⚠️ PRO subscription cancelled")
-                    .setDescription("Your TON618 PRO subscription has been refunded or reversed. PRO features have been deactivated.")
+                    .setColor(0x5865F2)
+                    .setTitle("🎉 Thanks for your purchase!")
+                    .setDescription(
+                      `Your **TON618 PRO ${planLabel}** activation code is ready.\n\n` +
+                      `**Code:** \`${code}\`\n\n` +
+                      `Go to your Discord server and run:\n\`/premium activate ${code}\``
+                    )
+                    .addFields(
+                      { name: "Expires in", value: "90 days", inline: true },
+                      { name: "Plan", value: planLabel, inline: true }
+                    )
+                    .setFooter({ text: "TON618 Bot · One-time use code" })
                     .setTimestamp(),
                 ] });
-              } catch { /* DM puede fallar */ }
+                logger.info("tebex", `DM enviado a ${discordId}`);
+              } catch (dmErr) {
+                logger.warn("tebex", `No se pudo enviar DM`, { discordId, error: dmErr.message });
+              }
             }
           }
-          return;
+        } catch (err) {
+          logger.error("tebex", "Error procesando webhook async", { error: err.message, paymentId });
         }
+      })();
 
-        // --- PAYMENT COMPLETED: generar código y enviar DM ---
-        const discordUsername = payload?.customer?.username || payload?.player?.username || null;
-
-        for (const pkg of packages) {
-          const packageId = String(pkg?.id || pkg?.package_id || "");
-          const tierInfo = getTierAndExpiry(packageId);
-          if (!tierInfo) {
-            logger.warn("tebex", `Paquete sin mapeo de tier`, { packageId });
-            continue;
-          }
-
-          if (guildId) {
-            await savePremiumToCache(guildId, tierInfo.tier, tierInfo.lifetime, tierInfo.expires_at, discordId);
-            await syncTebexPurchaseToSupabase(guildId, tierInfo, discordId, paymentId);
-          }
-
-          const durationDays = tierInfo.tier === "lifetime" ? null : tierInfo.tier === "pro_monthly" ? 31 : 366;
-          const code = generateCode(12);
-          const codeExpiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
-
-          await createCode({
-            code,
-            plan: "pro",
-            duration_days: durationDays,
-            created_by: "tebex_webhook",
-            expires_at: codeExpiresAt,
-            notes: `Tebex · ${tierInfo.tier} · ${discordUsername || discordId || "unknown"} · payment=${paymentId}`,
-            source: "tebex_purchase",
-          });
-
-          logger.info("tebex", `Código generado`, { code, discordId, tier: tierInfo.tier });
-
-          if (discordId && client) {
-            try {
-              const user = await client.users.fetch(discordId);
-              const planLabel = tierInfo.tier === "lifetime" ? "Lifetime" : tierInfo.tier === "pro_monthly" ? "Monthly" : "Yearly";
-              await user.send({ embeds: [
-                new EmbedBuilder()
-                  .setColor(0x5865F2)
-                  .setTitle("🎉 Thanks for your purchase!")
-                  .setDescription(
-                    `Your **TON618 PRO ${planLabel}** activation code is ready.\n\n` +
-                    `**Code:** \`${code}\`\n\n` +
-                    `Go to your Discord server and run:\n\`/premium activate ${code}\``
-                  )
-                  .addFields(
-                    { name: "Expires in", value: "90 days", inline: true },
-                    { name: "Plan", value: planLabel, inline: true }
-                  )
-                  .setFooter({ text: "TON618 Bot · One-time use code" })
-                  .setTimestamp(),
-              ] });
-              logger.info("tebex", `DM enviado a ${discordId}`);
-            } catch (dmErr) {
-              logger.warn("tebex", `No se pudo enviar DM`, { discordId, error: dmErr.message });
-            }
-          }
-        }
-      } catch (err) {
-        logger.error("tebex", "Error procesando webhook async", { error: err.message, paymentId });
+    } catch (insertErr) {
+      // ❌ insertOne falló — abortar inmediatamente sin generar códigos ni enviar mensajes
+      if (insertErr.code === 11000) {
+        logger.info("tebex", "Evento duplicado ignorado (E11000)", { paymentId, eventType });
+      } else {
+        logger.error("tebex", "Error crítico en idempotencia — abortando webhook", { error: insertErr.message, paymentId });
       }
-    })();
+      return res.status(200).end();
+    }
 
     return res.status(200).end();
   });
