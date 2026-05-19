@@ -277,13 +277,8 @@ function createTebexApp({ getClient }) {
       return res.status(200).end();
     }
 
-    const db = getDB();
-    if (!db) {
-      logger.error("tebex", "Sin conexión DB — abortando, no se puede garantizar idempotencia", { paymentId });
-      return res.status(200).end();
-    }
-
     try {
+      const db = getDB();
       await db.collection(WEBHOOK_EVENTS_COLLECTION).insertOne({
         payment_id: String(paymentId),
         event_type: eventType,
