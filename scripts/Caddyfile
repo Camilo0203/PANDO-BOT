@@ -1,0 +1,23 @@
+# TON618 Caddyfile
+# Auto-SSL for ton618bot.xyz
+# Place at: /etc/caddy/Caddyfile
+# Reload: systemctl reload caddy
+
+ton618bot.xyz {
+    # Web Dashboard (React SPA served by serve)
+    reverse_proxy localhost:3000
+
+    # Security headers
+    header {
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    # Handle SPA routing (all paths -> index.html)
+    try_files {path} /index.html
+}
+
+www.ton618bot.xyz {
+    redir https://ton618bot.xyz{uri}
+}
