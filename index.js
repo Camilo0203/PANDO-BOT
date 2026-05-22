@@ -123,6 +123,9 @@ function createDiscordClient(healthState) {
   client.commands = new Collection();
   client.once("clientReady", () => {
     markDiscordGatewayEvent(healthState, "clientReady", true);
+  });
+
+  client.once("ready", () => {
     try {
       const { MusicManager } = require("../ton618-music/src/music/MusicManager");
       client.musicManager = new MusicManager(client);
