@@ -123,6 +123,13 @@ function createDiscordClient(healthState) {
   client.commands = new Collection();
   client.once("clientReady", () => {
     markDiscordGatewayEvent(healthState, "clientReady", true);
+    try {
+      const { MusicManager } = require("../ton618-music/src/music/MusicManager");
+      client.musicManager = new MusicManager(client);
+      logger.info("startup.music", "MusicManager initialized successfully");
+    } catch (err) {
+      logger.warn("startup.music", "MusicManager not available — music commands disabled", { error: err?.message });
+    }
   });
   client.on("shardReady", (shardId) => {
     markDiscordGatewayEvent(healthState, "shardReady", true);
