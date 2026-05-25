@@ -125,11 +125,25 @@ function createDiscordClient(healthState) {
     markDiscordGatewayEvent(healthState, "clientReady", true);
   });
 
-  client.once("ready", () => {
+  client.once("clientReady", async () => {
     try {
       const { MusicManager } = require("../ton618-music/src/music/MusicManager");
+      const { VoiceStateMonitor } = require("../ton618-music/src/services/VoiceStateMonitor");
+      const { YouTubeTokenService } = require("../ton618-music/src/services/YouTubeTokenService");
+
       client.musicManager = new MusicManager(client);
-      logger.info("startup.music", "MusicManager initialized successfully");
+
+      const voiceMonitor = new VoiceStateMonitor(client, client.musicManager);
+      voiceMonitor.start();
+      client.voiceStateMonitor = voiceMonitor;
+
+      const youtubeTokenService = new YouTubeTokenService();
+      youtubeTokenService.start().catch((err) => {
+        logger.warn("startup.music", "YouTubeTokenService failed to start, continuing without tokens", { error: err?.message });
+      });
+      client.youtubeTokenService = youtubeTokenService;
+
+      logger.info("startup.music", "MusicManager + VoiceStateMonitor + YouTubeTokenService initialized");
     } catch (err) {
       logger.warn("startup.music", "MusicManager not available — music commands disabled", { error: err?.message });
     }
@@ -302,6 +316,16 @@ async function startBot() {
           if (client.giveawayHandler) client.giveawayHandler.stop();
           if (client.moderationHandler) client.moderationHandler.stop();
           if (client.statsHandler) client.statsHandler.stop();
+
+          if (client.voiceStateMonitor) client.voiceStateMonitor.stop();
+          if (client.youtubeTokenService) client.youtubeTokenService.stop();
+
+          if (client.musicManager) {
+            try {
+              const playerIds = [...client.musicManager.kazagumo.players.keys()];
+              await Promise.all(playerIds.map((id) => client.musicManager.destroyPlayer(id)));
+            } catch {}
+          }
 
           if (typeof client.destroy === "function") {
             client.destroy();

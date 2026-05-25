@@ -44,9 +44,12 @@
     "mongodb": "^7.1.0",
     "mongodb-mcp-server": "^1.9.0",
     "node-cron": "^4.2.1",
+    "playwright": "^1.52.0",
     "rss-parser": "^3.13.0",
     "shoukaku": "^4.3.0",
-    "vhost": "^3.0.2"
+    "undici": "^7.8.0",
+    "vhost": "^3.0.2",
+    "youtubei.js": "^13.3.0"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",

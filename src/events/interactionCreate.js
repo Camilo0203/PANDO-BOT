@@ -434,8 +434,15 @@ module.exports = {
           try {
             const { musicInteractionHandler } = require("../../../ton618-music/src/handlers/musicInteractionHandler");
             await musicInteractionHandler(interaction);
-          } catch {
-            // Music module unavailable — silently skip
+          } catch (err) {
+            // Only log actual errors; gracefully skip if command simply not found
+            if (err?.message && !err.message.includes("not found") && !err.message.includes("Unknown interaction")) {
+              logStructured("warn", "interaction.music_delegate.error", {
+                guildId: interaction.guildId,
+                commandName: interaction.commandName,
+                error: err.message,
+              });
+            }
           }
         }
 
