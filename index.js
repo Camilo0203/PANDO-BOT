@@ -121,32 +121,30 @@ function createDiscordClient(healthState) {
   });
 
   client.commands = new Collection();
+  try {
+    const { MusicManager } = require("../ton618-music/src/music/MusicManager");
+    const { VoiceStateMonitor } = require("../ton618-music/src/services/VoiceStateMonitor");
+    const { YouTubeTokenService } = require("../ton618-music/src/services/YouTubeTokenService");
+
+    client.musicManager = new MusicManager(client);
+
+    const voiceMonitor = new VoiceStateMonitor(client, client.musicManager);
+    voiceMonitor.start();
+    client.voiceStateMonitor = voiceMonitor;
+
+    const youtubeTokenService = new YouTubeTokenService();
+    youtubeTokenService.start().catch((err) => {
+      logger.warn("startup.music", "YouTubeTokenService failed to start, continuing without tokens", { error: err?.message });
+    });
+    client.youtubeTokenService = youtubeTokenService;
+
+    logger.info("startup.music", "MusicManager + VoiceStateMonitor + YouTubeTokenService initialized");
+  } catch (err) {
+    logger.warn("startup.music", "MusicManager not available — music commands disabled", { error: err?.message });
+  }
+
   client.once("clientReady", () => {
     markDiscordGatewayEvent(healthState, "clientReady", true);
-  });
-
-  client.once("clientReady", async () => {
-    try {
-      const { MusicManager } = require("../ton618-music/src/music/MusicManager");
-      const { VoiceStateMonitor } = require("../ton618-music/src/services/VoiceStateMonitor");
-      const { YouTubeTokenService } = require("../ton618-music/src/services/YouTubeTokenService");
-
-      client.musicManager = new MusicManager(client);
-
-      const voiceMonitor = new VoiceStateMonitor(client, client.musicManager);
-      voiceMonitor.start();
-      client.voiceStateMonitor = voiceMonitor;
-
-      const youtubeTokenService = new YouTubeTokenService();
-      youtubeTokenService.start().catch((err) => {
-        logger.warn("startup.music", "YouTubeTokenService failed to start, continuing without tokens", { error: err?.message });
-      });
-      client.youtubeTokenService = youtubeTokenService;
-
-      logger.info("startup.music", "MusicManager + VoiceStateMonitor + YouTubeTokenService initialized");
-    } catch (err) {
-      logger.warn("startup.music", "MusicManager not available — music commands disabled", { error: err?.message });
-    }
   });
   client.on("shardReady", (shardId) => {
     markDiscordGatewayEvent(healthState, "shardReady", true);

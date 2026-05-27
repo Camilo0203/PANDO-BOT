@@ -66,14 +66,6 @@ module.exports = {
     await syncAllGuildLiveStats(client, { hydrateMembers: false });
     await startHealthMonitor(client);
 
-    try {
-      const { MusicManager } = require("../../ton618-music/src/music/MusicManager");
-      client.musicManager = new MusicManager(client);
-      logger.startup("ready", "MusicManager initialized", "green");
-    } catch (error) {
-      logger.warn("ready.music", "MusicManager not available", { error: error?.message || String(error) });
-    }
-
     for (const registrar of cronRegistrars) {
       registrar.register(client);
     }

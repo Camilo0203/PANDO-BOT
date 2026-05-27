@@ -31,6 +31,7 @@ const modals = new Collection();
 let handlersLoaded = false;
 const SETTINGS_MUTATION_COMMANDS = new Set(["config", "setup", "verify"]);
 const SETTINGS_MUTATION_CUSTOM_ID_PREFIXES = ["cfg_center_", "setup_cmd_panel_"];
+const MUSIC_COMMANDS = new Set(["play", "skip", "stop", "pause", "resume", "queue", "nowplaying", "volume", "leave"]);
 
 function clearCachedSettings(guildId) {
   if (!guildId) return;
@@ -360,6 +361,15 @@ module.exports = {
   name: "interactionCreate",
   async execute(interaction, client) {
     try {
+      if (interaction.isChatInputCommand() && MUSIC_COMMANDS.has(interaction.commandName) && client.musicManager) {
+        if (!interaction.deferred && !interaction.replied) {
+          await interaction.deferReply();
+        }
+        const { musicInteractionHandler } = require("../../../ton618-music/src/handlers/musicInteractionHandler");
+        await musicInteractionHandler(interaction);
+        return;
+      }
+
       if (!handlersLoaded) {
         loadHandlers();
       }
