@@ -32,9 +32,62 @@ const AutoRoleHandler = require("./src/handlers/autoRoleHandler");
 const ModerationHandler = require("./src/handlers/moderationHandler");
 const StatsHandler = require("./src/handlers/statsHandler");
 
+const INSTANCE_LOCK_PATH = path.join(__dirname, ".ton618-bot.lock");
+
 function formatError(error) {
   if (!error) return "Unknown error";
   return error.stack || error.message || String(error);
+}
+
+function isProcessAlive(pid) {
+  if (!pid || Number.isNaN(pid) || pid === process.pid) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function acquireInstanceLock() {
+  if (parseBoolean(process.env.DISABLE_SINGLE_INSTANCE_LOCK, false)) {
+    return null;
+  }
+
+  try {
+    const existing = fs.readFileSync(INSTANCE_LOCK_PATH, "utf8");
+    const existingPid = Number.parseInt(existing, 10);
+    if (isProcessAlive(existingPid)) {
+      const error = new Error(`Another TON618 bot instance is already running with PID ${existingPid}. Stop it before starting this one.`);
+      error.startupStage = "single-instance-lock";
+      throw error;
+    }
+    fs.unlinkSync(INSTANCE_LOCK_PATH);
+  } catch (error) {
+    if (error?.code !== "ENOENT") {
+      if (error.startupStage) throw error;
+      logger.warn("startup.single-instance-lock", "Could not read previous lock file", { error: error?.message || String(error) });
+    }
+  }
+
+  try {
+    fs.writeFileSync(INSTANCE_LOCK_PATH, String(process.pid), { flag: "wx" });
+    return INSTANCE_LOCK_PATH;
+  } catch (error) {
+    const lockError = new Error(`Could not acquire TON618 bot instance lock: ${error?.message || String(error)}`);
+    lockError.startupStage = "single-instance-lock";
+    throw lockError;
+  }
+}
+
+function releaseInstanceLock(lockPath) {
+  if (!lockPath) return;
+  try {
+    const current = fs.readFileSync(lockPath, "utf8").trim();
+    if (current === String(process.pid)) {
+      fs.unlinkSync(lockPath);
+    }
+  } catch {}
 }
 
 function logStartup(stage, message, color = "blue") {
@@ -288,6 +341,18 @@ async function startBot() {
   const buildInfo = getBuildInfo();
   const healthState = createHealthState();
   let client = null;
+  let instanceLockPath = null;
+
+  try {
+    instanceLockPath = acquireInstanceLock();
+  } catch (error) {
+    console.error(`[FATAL STARTUP ERROR] Stage: ${error.startupStage || "single-instance-lock"} | Error: ${error.message}`);
+    logger.error("startup.single-instance-lock", "Another bot instance is already active or the lock could not be acquired.", {
+      error: error.message,
+    });
+    process.exit(1);
+    return;
+  }
 
   async function shutdownGracefully(signal) {
     if (isShuttingDown()) return;
@@ -372,6 +437,7 @@ async function startBot() {
       }
 
       logStructured("info", "process.shutdown.done", { signal, result });
+      releaseInstanceLock(instanceLockPath);
       clearTimeout(forceTimer);
       process.exit(0);
     } catch (error) {
@@ -538,6 +604,7 @@ async function startBot() {
       error: errorMessage,
     });
     await cleanupStartupFailure(client, healthState);
+    releaseInstanceLock(instanceLockPath);
     // Delay exit to prevent Square Cloud rapid restart loop
     setTimeout(() => process.exit(1), 5000);
     return;

@@ -29,6 +29,7 @@ const buttons = new Collection();
 const selects = new Collection();
 const modals = new Collection();
 let handlersLoaded = false;
+const activeInteractions = new Set();
 const SETTINGS_MUTATION_COMMANDS = new Set(["config", "setup", "verify"]);
 const SETTINGS_MUTATION_CUSTOM_ID_PREFIXES = ["cfg_center_", "setup_cmd_panel_"];
 const MUSIC_COMMANDS = new Set(["play", "skip", "stop", "pause", "resume", "queue", "nowplaying", "volume", "leave"]);
@@ -360,11 +361,15 @@ async function handleCommandDisabled(interaction, commandName, language = "en") 
 module.exports = {
   name: "interactionCreate",
   async execute(interaction, client) {
+    if (interaction?.id && activeInteractions.has(interaction.id)) {
+      return;
+    }
+    if (interaction?.id) {
+      activeInteractions.add(interaction.id);
+    }
+
     try {
       if (interaction.isChatInputCommand() && MUSIC_COMMANDS.has(interaction.commandName) && client.musicManager) {
-        if (!interaction.deferred && !interaction.replied) {
-          await interaction.deferReply();
-        }
         const { musicInteractionHandler } = require("../../../ton618-music/src/handlers/musicInteractionHandler");
         await musicInteractionHandler(interaction);
         return;
@@ -670,6 +675,10 @@ module.exports = {
       else await interaction.reply(payload).catch((err) => {
         logStructured("warn", "interaction.error.reply_failed", { error: err?.message || String(err) });
       });
+    } finally {
+      if (interaction?.id) {
+        activeInteractions.delete(interaction.id);
+      }
     }
   },
 };
