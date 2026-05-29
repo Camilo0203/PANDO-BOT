@@ -1,9 +1,35 @@
+# Dependencies
 node_modules/
+
+# Environment variables
 .env
-data/
-.cursor/
-*.json.bak
-tmp/
+.env.*
+!.env.example
+
+# Logs
+logs/
 *.log
-ton618-bot/
+
+# Local data
+data/
+tmp/
+
+# Lock files
+*.lock
+.ton618-bot.lock
+
+# Tokens/cache
+.youtube-tokens.json
+*.json.bak
+
+# IDE/Editor
+.cursor/
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment-specific
 .env.staging
