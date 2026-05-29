@@ -23,8 +23,7 @@ jobs:
             set -e
             
             echo "=== Deploying ton618-bot ==="
-            # Ajusta la ruta a /opt/ton618/ton618-bot si esa es la correcta en tu VPS
-            cd /home/ton618/ton618-bot
+            cd /opt/ton618/ton618-bot
             
             echo "Pulling latest changes..."
             git pull origin main
