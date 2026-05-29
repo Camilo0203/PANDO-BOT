@@ -4,18 +4,35 @@ on:
   push:
     branches: [main]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy via SSH
+      - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.VPS_HOST }}
-          username: root
-          password: ${{ secrets.VPS_PASSWORD }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          command_timeout: 30m
           script: |
-            cd /opt/ton618/ton618-bot
+            set -e
+            
+            echo "=== Deploying ton618-bot ==="
+            # Ajusta la ruta a /opt/ton618/ton618-bot si esa es la correcta en tu VPS
+            cd /home/ton618/ton618-bot
+            
+            echo "Pulling latest changes..."
             git pull origin main
-            npm install
-            pm2 restart ton618-bot || pm2 start index.js --name ton618-bot
+            
+            echo "Installing dependencies..."
+            npm ci
+            
+            echo "Restarting ton618-bot..."
+            pm2 restart ton618-bot || pm2 start ecosystem.config.js --only ton618-bot
+            
+            echo "=== Deploy completed successfully ==="
