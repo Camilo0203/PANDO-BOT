@@ -35,55 +35,58 @@ function checkSentiment(content) {
 module.exports = {
   name: "messageCreate",
   async execute(message, client) {
-    if (message.author.bot || !message.guild) return;
+    try {
+      if (message.author.bot || !message.guild) return;
 
-    // ... (stats y levels logic)
-// ...
-    // 1. SISTEMA DE TICKETS (INTELLIGENCE ENGINE)
-    const ticketData = await tickets.get(message.channel.id);
-    if (ticketData && ticketData.status === "open") {
-      const s = await getGuildSettings(message.guild.id);
-      const isStaff = hasStaffPrivileges(message.member, s);
-      await tickets.incrementMessages(message.channel.id, isStaff);
+      // ... (stats y levels logic)
+  // ...
+      // 1. SISTEMA DE TICKETS (INTELLIGENCE ENGINE)
+      const ticketData = await tickets.get(message.channel.id);
+      if (ticketData && ticketData.status === "open") {
+        const s = await getGuildSettings(message.guild.id);
+        const isStaff = hasStaffPrivileges(message.member, s);
+        await tickets.incrementMessages(message.channel.id, isStaff);
 
-      if (!isStaff && message.content) {
-        const match = await autoResponses.match(message.guild.id, message.content);
-        const sentiment = checkSentiment(message.content);
-        const lang = s.language || "en";
-        
-        // Actualizar Panel de Control con Intel
-        const sentimentText = t(lang, `ticket.auto_reply.sentiment_${sentiment}`);
-        await updateTicketControlPanelEmbed(message.channel, ticketData, {
-          language: lang,
-          sentiment: sentimentText,
-          suggestion: match ? match.response : null,
-          color: sentiment === "angry" ? 0xFF0000 : null
-        });
-
-        if (match && hasRequiredPlan(s, "pro")) {
-          await autoResponses.use(message.guild.id, match.trigger);
+        if (!isStaff && message.content) {
+          const match = await autoResponses.match(message.guild.id, message.content);
+          const sentiment = checkSentiment(message.content);
+          const lang = s.language || "en";
           
-          const urgencyKeywords = t(lang, "ticket.auto_reply.urgency_keywords");
-          const isUrgent = checkUrgency(message.content, urgencyKeywords) || sentiment === "angry";
-          
-          const prefix = t(lang, "ticket.auto_reply.prefix", { trigger: match.trigger });
-          const footer = t(lang, "ticket.auto_reply.footer");
-          
-          const responseEmbed = new EmbedBuilder()
-            .setAuthor({ 
-              name: isUrgent ? t(lang, "ticket.auto_reply.priority_badge") : prefix,
-              iconURL: client.user.displayAvatarURL() 
-            })
-            .setColor(isUrgent ? 0xFF0000 : 0x2F3136)
-            .setDescription(`${match.response}${isUrgent ? `\n\n${t(lang, "ticket.auto_reply.priority_note")}` : ""}\n\n${footer}`)
-            .setTimestamp();
+          // Actualizar Panel de Control con Intel
+          await updateTicketControlPanelEmbed(message.channel, ticketData, {
+            language: lang,
+            sentiment: t(lang, `ticket.auto_reply.sentiment_${sentiment}`),
+            suggestion: match ? match.response : null,
+            color: sentiment === "angry" ? 0xFF0000 : null
+          }).catch(err => console.error("[messageCreate] failed to update ticket panel:", err?.message));
 
-          await message.channel.sendTyping().catch((err) => { console.error("[messageCreate] suppressed error:", err?.message || err); });
-          setTimeout(async () => {
-             await message.reply({ embeds: [responseEmbed] }).catch((err) => { console.error("[messageCreate] suppressed error:", err?.message || err); });
-          }, isUrgent ? 1200 : 600);
+          if (match && hasRequiredPlan(s, "pro")) {
+            await autoResponses.use(message.guild.id, match.trigger);
+            
+            const urgencyKeywords = t(lang, "ticket.auto_reply.urgency_keywords");
+            const isUrgent = checkUrgency(message.content, urgencyKeywords) || sentiment === "angry";
+            
+            const prefix = t(lang, "ticket.auto_reply.prefix", { trigger: match.trigger });
+            const footer = t(lang, "ticket.auto_reply.footer");
+            
+            const responseEmbed = new EmbedBuilder()
+              .setAuthor({ 
+                name: isUrgent ? t(lang, "ticket.auto_reply.priority_badge") : prefix,
+                iconURL: client.user.displayAvatarURL() 
+              })
+              .setColor(isUrgent ? 0xFF0000 : 0x2F3136)
+              .setDescription(`${match.response}${isUrgent ? `\n\n${t(lang, "ticket.auto_reply.priority_note")}` : ""}\n\n${footer}`)
+              .setTimestamp();
+
+            await message.channel.sendTyping().catch((err) => { console.error("[messageCreate] suppressed error:", err?.message || err); });
+            setTimeout(async () => {
+               await message.reply({ embeds: [responseEmbed] }).catch((err) => { console.error("[messageCreate] suppressed error:", err?.message || err); });
+            }, isUrgent ? 1200 : 600);
+          }
         }
       }
+    } catch (error) {
+      console.error("[messageCreate] Unhandled error in execute:", error?.message || error);
     }
   },
 };

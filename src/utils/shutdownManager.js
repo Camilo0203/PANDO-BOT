@@ -26,10 +26,6 @@ let shutdownResolve = null;
 const activeOperations = new Map();
 let operationCounter = 0;
 
-// Tracker de timers activos para cleanup
-const activeTimers = new Set();
-let timerCounter = 0;
-
 // Configuración
 const CONFIG = {
   drainTimeoutMs: parseInt(process.env.SHUTDOWN_DRAIN_TIMEOUT_MS) || 10000,
@@ -281,7 +277,8 @@ function shutdownMiddleware(interactionHandler) {
     if (currentState !== SHUTDOWN_STATE.IDLE) {
       // Bot está cerrando, rechazar operación
       try {
-        const s = await settings.get(interaction.guild.id).catch(() => null);
+        const guildId = interaction.guild?.id || interaction.guildId;
+        const s = guildId ? await settings.get(guildId).catch(() => null) : null;
         const language = resolveInteractionLanguage(interaction, s);
         await interaction.reply({
           content: t(language, "interaction.shutdown.rebooting"),
@@ -324,29 +321,27 @@ function isShuttingDown() {
   return currentState !== SHUTDOWN_STATE.IDLE;
 }
 
-// Timer tracking functions
+// Timer tracking — use a Map for O(1) lookup/dedup instead of a Set of objects
+const timerRegistry = new Map();
+
 function registerTimer(timerId, type = "generic") {
-  activeTimers.add({ id: timerId, type, createdAt: Date.now() });
+  if (!timerRegistry.has(timerId)) {
+    timerRegistry.set(timerId, { id: timerId, type, createdAt: Date.now() });
+  }
 }
 
 function unregisterTimer(timerId) {
-  for (const timer of activeTimers) {
-    if (timer.id === timerId) {
-      activeTimers.delete(timer);
-      return true;
-    }
-  }
-  return false;
+  return timerRegistry.delete(timerId);
 }
 
 function clearAllTimers() {
-  const count = activeTimers.size;
-  activeTimers.clear();
+  const count = timerRegistry.size;
+  timerRegistry.clear();
   return count;
 }
 
 function getActiveTimerCount() {
-  return activeTimers.size;
+  return timerRegistry.size;
 }
 
 module.exports = {

@@ -26,12 +26,13 @@
     "migrate:settings": "node scripts/migrate-settings-schema.js",
     "db:indexes": "node scripts/ensure-indexes.js",
     "build:ts": "tsc --noEmit",
-    "deploy:music": "node ../ton618-music/scripts/deploy-music-commands.js",
+    "deploy:music": "node node_modules/ton618-music/scripts/deploy-music-commands.js",
     "test:concurrency:votes": "node scripts/test-concurrency-votes.js",
     "test": "node --test tests/*.test.js"
   },
   "dependencies": {
     "@ton618/shared": "file:../ton618-shared",
+    "ton618-music": "file:../ton618-music",
     "axios": "^1.6.7",
     "chalk": "^5.6.2",
     "cors": "^2.8.6",

@@ -32,7 +32,7 @@ const ENV_SCHEMA = {
   // Required
   DISCORD_TOKEN: { required: true, type: "string" },
   MONGO_URI: { required: true, type: "string" },
-  OWNER_ID: { required: true, type: "string", pattern: /^\d{17,20}$/ },
+  OWNER_ID: { required: false, type: "string", pattern: /^\d{17,20}$/ },
 
   // Optional with defaults
   MONGO_DB: { required: false, type: "string", default: "ton618_bot" },
@@ -194,13 +194,13 @@ function validateAllEnv() {
       warnings.push("MONGO_URI does not enforce TLS/SSL in production. Consider adding ?tls=true or using mongodb+srv://");
     }
     if (!process.env.ENCRYPTION_KEY) {
-      warnings.push("ENCRYPTION_KEY is not set; secure storage features will be disabled");
+      errors.push("ENCRYPTION_KEY is not set; secure storage features will be disabled. Set to a 64-char hex string.");
     }
     if (!process.env.HASH_SALT) {
-      warnings.push("HASH_SALT is not set; stable hashing features will use fallback");
+      errors.push("HASH_SALT is not set; stable hashing features will use fallback. Must be at least 32 characters.");
     }
     if (!process.env.DASH_API_KEY) {
-      warnings.push("DASH_API_KEY is not set; the internal dashboard at dash.ton618bot.xyz has NO authentication. Set a secure random key.");
+      errors.push("DASH_API_KEY is not set; the internal dashboard at dash.ton618bot.xyz has NO authentication. Set a secure random key.");
     }
   }
 
@@ -234,7 +234,7 @@ function getEnv(key, defaultValue = undefined) {
  * Quick check for startup
  */
 function quickValidate() {
-  const required = ["DISCORD_TOKEN", "MONGO_URI", "OWNER_ID"];
+  const required = ["DISCORD_TOKEN", "MONGO_URI"];
   const missing = required.filter((key) => !process.env[key]);
 
   if (missing.length > 0) {

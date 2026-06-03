@@ -36,18 +36,19 @@ function startWebServer({ healthState, buildInfo, getClient, port }) {
   const listenPort = parseInt(port, 10) || 80;
 
   return new Promise((resolve, reject) => {
-    const mainApp = express();
+    try {
+      const mainApp = express();
 
-    // ── Security headers (applies to all routes except webhook) ──
-    mainApp.use(createHelmetMiddleware());
-    mainApp.use(createCorsMiddleware());
+      // ── Security headers (applies to all routes except webhook) ──
+      mainApp.use(createHelmetMiddleware());
+      mainApp.use(createCorsMiddleware());
 
-    // Sub-applications
-    const landingApp = createLandingApp({ healthState, buildInfo, getClient });
-    const healthApp = createHealthApp({ healthState, buildInfo, getClient });
-    const dashboardApp = createDashboardApp({ healthState, buildInfo, getClient });
-    const tebexApp = createTebexApp({ getClient });
-    mainApp.use("/webhook-tebex", tebexApp);
+      // Sub-applications
+      const landingApp = createLandingApp({ healthState, buildInfo, getClient });
+      const healthApp = createHealthApp({ healthState, buildInfo, getClient });
+      const dashboardApp = createDashboardApp({ healthState, buildInfo, getClient });
+      const tebexApp = createTebexApp({ getClient });
+      mainApp.use("/webhook-tebex", tebexApp);
 
     // ── Tebex checkout proxy (server-side basket creation to avoid CORS) ──
     const axios        = require("axios");
@@ -197,6 +198,10 @@ function startWebServer({ healthState, buildInfo, getClient, port }) {
       logger.error("webServer", "Failed to start", { port: listenPort, error: err?.message || String(err) });
       reject(err);
     });
+    } catch (err) {
+      _startedAt = null;
+      reject(err);
+    }
   });
 }
 

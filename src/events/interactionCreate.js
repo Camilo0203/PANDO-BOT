@@ -270,7 +270,6 @@ async function applyInteractionRateLimit(interaction) {
 }
 
 function loadHandlers() {
-  handlersLoaded = true; // Marcar ANTES del I/O: evita reinvocaciones concurrentes
   const buttonsPath = path.join(__dirname, "../interactions/buttons");
   if (fs.existsSync(buttonsPath)) {
     const buttonFiles = fs.readdirSync(buttonsPath).filter((file) => file.endsWith(".js"));
@@ -297,6 +296,9 @@ function loadHandlers() {
       modals.set(modal.customId, modal);
     }
   }
+
+  // Mark AFTER all I/O completes to prevent partially-loaded handlers
+  handlersLoaded = true;
 }
 
 function findHandler(collection, customId) {
@@ -370,7 +372,7 @@ module.exports = {
 
     try {
       if (interaction.isChatInputCommand() && MUSIC_COMMANDS.has(interaction.commandName) && client.musicManager) {
-        const { musicInteractionHandler } = require("../../../ton618-music/src/handlers/musicInteractionHandler");
+        const { musicInteractionHandler } = require("ton618-music/src/handlers/musicInteractionHandler");
         await musicInteractionHandler(interaction);
         return;
       }
@@ -447,7 +449,7 @@ module.exports = {
         // Delegate to music module if available
         if (client.musicManager) {
           try {
-            const { musicInteractionHandler } = require("../../../ton618-music/src/handlers/musicInteractionHandler");
+            const { musicInteractionHandler } = require("ton618-music/src/handlers/musicInteractionHandler");
             await musicInteractionHandler(interaction);
           } catch (err) {
             // Only log actual errors; gracefully skip if command simply not found

@@ -60,7 +60,7 @@ function validateEnv(env = process.env, options = {}) {
     } else {
       warnings.push("OWNER_ID is not set. Developer-only commands may not behave as expected.");
     }
-  } else if (!/^\d{16,22}$/.test(ownerId.trim())) {
+  } else if (!/^\d{17,20}$/.test(ownerId.trim())) {
     if (strictProduction) {
       errors.push("OWNER_ID format looks invalid. Expected a Discord snowflake.");
     } else {

@@ -5,6 +5,7 @@ const { normalizeLanguage, t } = require("./i18n");
 const settingsCache = new Map();
 const SETTINGS_CACHE_TTL_MS = 30 * 1000;
 const SETTINGS_CACHE_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
+const SETTINGS_CACHE_MAX_SIZE = 2000;
 
 function getOwnerId(client) {
   return process.env.OWNER_ID || process.env.DISCORD_OWNER_ID || client?.application?.owner?.id || null;
@@ -21,6 +22,11 @@ function getFromCache(cache, key) {
 }
 
 function setCache(cache, key, value, ttlMs) {
+  // Evict oldest entry if cache is at max capacity
+  if (cache.size >= SETTINGS_CACHE_MAX_SIZE) {
+    const firstKey = cache.keys().next().value;
+    if (firstKey !== undefined) cache.delete(firstKey);
+  }
   cache.set(key, {
     value,
     expiresAt: Date.now() + ttlMs,

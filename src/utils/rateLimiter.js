@@ -86,27 +86,35 @@ function checkUserRateLimit({
 const globalUserBuckets = new Map();
 const GLOBAL_RATE_LIMIT_MAX = 30; // Max actions across all guilds
 const GLOBAL_RATE_LIMIT_WINDOW = 10; // seconds
+let lastGlobalCleanupAt = 0;
+const GLOBAL_CLEANUP_INTERVAL_MS = 60 * 1000;
+
+function cleanupGlobalBuckets(now) {
+  if (now - lastGlobalCleanupAt < GLOBAL_CLEANUP_INTERVAL_MS) return;
+  lastGlobalCleanupAt = now;
+
+  for (const [key, entry] of globalUserBuckets.entries()) {
+    if (!entry || entry.resetAt <= now) {
+      globalUserBuckets.delete(key);
+    }
+  }
+}
 
 function checkGlobalUserRateLimit(userId, scope = "commands") {
   const now = Date.now();
+  cleanupGlobalBuckets(now);
+
   const windowMs = GLOBAL_RATE_LIMIT_WINDOW * 1000;
   const key = `${userId}::${scope}`;
 
   let entry = globalUserBuckets.get(key);
   if (!entry || entry.resetAt <= now) {
-    entry = { count: 0, resetAt: now + windowMs, guilds: new Set() };
+    entry = { count: 0, resetAt: now + windowMs };
   }
 
   entry.count += 1;
   entry.lastAccessedAt = now;
   globalUserBuckets.set(key, entry);
-
-  // Cleanup old entries periodically
-  if (globalUserBuckets.size > 10000) {
-    for (const [k, v] of globalUserBuckets.entries()) {
-      if (v.resetAt <= now) globalUserBuckets.delete(k);
-    }
-  }
 
   if (entry.count <= GLOBAL_RATE_LIMIT_MAX) {
     return {

@@ -13,6 +13,7 @@ const EXPECTED_PUBLIC_COMMANDS = [
   "config",
   "embed",
   "giveaway",
+  "health",
   "help",
   "level",
   "mod",

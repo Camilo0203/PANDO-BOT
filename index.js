@@ -1,6 +1,6 @@
 require("dotenv").config({ path: [".env.local", ".env"], quiet: true });
 
-const { Client, GatewayIntentBits, Partials, Collection } = require("discord.js");
+const { Client, GatewayIntentBits, Partials, Collection, Options } = require("discord.js");
 const chalk = require("./chalk-compat");
 const fs = require("fs");
 const path = require("path");
@@ -62,7 +62,8 @@ function acquireInstanceLock() {
       error.startupStage = "single-instance-lock";
       throw error;
     }
-    fs.unlinkSync(INSTANCE_LOCK_PATH);
+    // Stale lock — previous process is dead. Remove it atomically.
+    try { fs.unlinkSync(INSTANCE_LOCK_PATH); } catch {}
   } catch (error) {
     if (error?.code !== "ENOENT") {
       if (error.startupStage) throw error;
@@ -70,14 +71,36 @@ function acquireInstanceLock() {
     }
   }
 
-  try {
-    fs.writeFileSync(INSTANCE_LOCK_PATH, String(process.pid), { flag: "wx" });
-    return INSTANCE_LOCK_PATH;
-  } catch (error) {
-    const lockError = new Error(`Could not acquire TON618 bot instance lock: ${error?.message || String(error)}`);
-    lockError.startupStage = "single-instance-lock";
-    throw lockError;
+  // Retry loop to handle TOCTOU race between unlink and write
+  const MAX_LOCK_RETRIES = 5;
+  for (let attempt = 0; attempt < MAX_LOCK_RETRIES; attempt++) {
+    try {
+      fs.writeFileSync(INSTANCE_LOCK_PATH, String(process.pid), { flag: "wx" });
+      return INSTANCE_LOCK_PATH;
+    } catch (error) {
+      if (error.code === "EEXIST" && attempt < MAX_LOCK_RETRIES - 1) {
+        // Another instance won the race — check if it's alive
+        try {
+          const rivalPid = Number.parseInt(fs.readFileSync(INSTANCE_LOCK_PATH, "utf8"), 10);
+          if (!isProcessAlive(rivalPid)) {
+            try { fs.unlinkSync(INSTANCE_LOCK_PATH); } catch {}
+            continue;
+          }
+        } catch {}
+        // Rival is alive — fail immediately
+        const lockError = new Error(`Another TON618 bot instance is already running. Stop it before starting this one.`);
+        lockError.startupStage = "single-instance-lock";
+        throw lockError;
+      }
+      const lockError = new Error(`Could not acquire TON618 bot instance lock: ${error?.message || String(error)}`);
+      lockError.startupStage = "single-instance-lock";
+      throw lockError;
+    }
   }
+
+  const lockError = new Error(`Could not acquire TON618 bot instance lock after ${MAX_LOCK_RETRIES} attempts`);
+  lockError.startupStage = "single-instance-lock";
+  throw lockError;
 }
 
 function releaseInstanceLock(lockPath) {
@@ -87,7 +110,11 @@ function releaseInstanceLock(lockPath) {
     if (current === String(process.pid)) {
       fs.unlinkSync(lockPath);
     }
-  } catch {}
+  } catch (error) {
+    if (error?.code !== "ENOENT") {
+      logger.warn("startup.single-instance-lock", "Error releasing lock file", { error: error?.message || String(error) });
+    }
+  }
 }
 
 function logStartup(stage, message, color = "blue") {
@@ -171,13 +198,32 @@ function createDiscordClient(healthState) {
   const client = new Client({
     intents,
     partials: [Partials.Channel, Partials.Message, Partials.GuildMember, Partials.Reaction],
+    makeCache: Options.cacheWithLimits({
+      MessageManager: 50,
+      ThreadManager: 20,
+      PresenceManager: 0,
+      ReactionManager: 0,
+      GuildMemberManager: 200,
+      UserManager: 200,
+    }),
+    sweepers: {
+      ...Options.DefaultMakeCacheSettings.sweepers,
+      messages: {
+        interval: 3600, // Sweep every hour
+        lifetime: 1800, // Remove messages older than 30 minutes
+      },
+      threads: {
+        interval: 3600,
+        lifetime: 14400,
+      },
+    },
   });
 
   client.commands = new Collection();
   try {
-    const { MusicManager } = require("../ton618-music/src/music/MusicManager");
-    const { VoiceStateMonitor } = require("../ton618-music/src/services/VoiceStateMonitor");
-    const { YouTubeTokenService } = require("../ton618-music/src/services/YouTubeTokenService");
+    const { MusicManager } = require("ton618-music/src/music/MusicManager");
+    const { VoiceStateMonitor } = require("ton618-music/src/services/VoiceStateMonitor");
+    const { YouTubeTokenService } = require("ton618-music/src/services/YouTubeTokenService");
 
     client.musicManager = new MusicManager(client);
 
@@ -455,8 +501,7 @@ async function startBot() {
       stack: error?.stack,
     });
     recordError("process.unhandledRejection");
-    // Trigger graceful shutdown instead of abrupt exit
-    shutdownGracefully("unhandledRejection").catch(() => process.exit(1));
+    // Only log the error, DO NOT exit or shutdown the process
   });
   process.on("uncaughtException", (error) => {
     logger.error("process.uncaughtException", error?.message || "Uncaught exception", {

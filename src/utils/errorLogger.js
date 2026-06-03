@@ -3,7 +3,9 @@ const path = require("path");
 const { parseBoolean } = require("./envHelpers");
 
 function isFileErrorLoggingEnabled() {
-  return parseBoolean(process.env.ERROR_LOG_TO_FILE, true);
+  // In production (especially cloud environments like Square Cloud), default to false to avoid wasting ephemeral storage
+  const isProd = process.env.NODE_ENV === "production";
+  return parseBoolean(process.env.ERROR_LOG_TO_FILE, !isProd);
 }
 
 function resolveErrorLogDir() {

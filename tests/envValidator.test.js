@@ -51,7 +51,8 @@ describe("envValidator", () => {
       assert.strictEqual(result.valid, false);
       assert.ok(result.missing.includes("DISCORD_TOKEN"));
       assert.ok(result.missing.includes("MONGO_URI"));
-      assert.ok(result.missing.includes("OWNER_ID"));
+      // OWNER_ID is optional — not in required list
+      assert.ok(!result.missing.includes("OWNER_ID"));
     });
 
     it("should handle partial missing vars", () => {
@@ -192,7 +193,7 @@ describe("envValidator", () => {
 
     it("should have OWNER_ID with pattern validation", () => {
       const { ENV_SCHEMA } = envValidator;
-      assert.strictEqual(ENV_SCHEMA.OWNER_ID.required, true);
+      assert.strictEqual(ENV_SCHEMA.OWNER_ID.required, false);
       assert.ok(ENV_SCHEMA.OWNER_ID.pattern);
       assert.ok(ENV_SCHEMA.OWNER_ID.pattern.test("123456789012345678"));
       assert.ok(!ENV_SCHEMA.OWNER_ID.pattern.test("invalid"));
