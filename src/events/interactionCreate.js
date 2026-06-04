@@ -371,9 +371,16 @@ module.exports = {
     }
 
     try {
-      if (interaction.isChatInputCommand() && MUSIC_COMMANDS.has(interaction.commandName) && client.musicManager) {
-        const { musicInteractionHandler } = require("ton618-music/src/handlers/musicInteractionHandler");
-        await musicInteractionHandler(interaction);
+      if (interaction.isChatInputCommand() && MUSIC_COMMANDS.has(interaction.commandName)) {
+        if (client.musicManager) {
+          const { musicInteractionHandler } = require("ton618-music/src/handlers/musicInteractionHandler");
+          await musicInteractionHandler(interaction);
+        } else {
+          await interaction.reply({
+            content: "Music services are currently unavailable. Please try again later.",
+            flags: 64,
+          }).catch(() => {});
+        }
         return;
       }
 
