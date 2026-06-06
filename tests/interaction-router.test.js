@@ -1,3 +1,5 @@
+process.env.NODE_ENV = "test";
+
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { Collection } = require("discord.js");
@@ -28,6 +30,7 @@ function createBaseInteraction({
     reply: [],
     followUp: [],
     update: [],
+    deferUpdate: 0,
   };
 
   return {
@@ -52,6 +55,10 @@ function createBaseInteraction({
     reply: async (payload) => { calls.reply.push(payload); },
     followUp: async (payload) => { calls.followUp.push(payload); },
     update: async (payload) => { calls.update.push(payload); },
+    deferUpdate: async function () {
+      calls.deferUpdate++;
+      this.deferred = true;
+    },
     __calls: calls,
   };
 }
@@ -243,4 +250,60 @@ test("router responde mensaje controlado cuando la DB no esta disponible", async
   const payload = interaction.__calls.reply[0];
   const embedText = payload.embeds?.[0]?.data?.description || "";
   assert.match(embedText, /Base de datos temporalmente no disponible/i);
+});
+
+test("router delega botones music y retorna sin ejecutar handlers locales", async () => {
+  const musicModule = require("ton618-music/src/handlers/musicInteractionHandler");
+  const originalHandler = musicModule.musicInteractionHandler;
+  let delegated = 0;
+  let localHandled = false;
+
+  musicModule.musicInteractionHandler = async (interaction) => {
+    delegated++;
+    assert.equal(interaction.customId, "music:control:pause");
+  };
+  interactionEvent.__test.seedHandler("button", "music:control:pause", {
+    customId: "music:control:pause",
+    execute: async () => {
+      localHandled = true;
+    },
+  });
+
+  try {
+    const interaction = createBaseInteraction({
+      kind: "button",
+      customId: "music:control:pause",
+    });
+    const client = { commands: new Collection(), musicManager: {} };
+
+    await interactionEvent.execute(interaction, client);
+
+    assert.equal(delegated, 1);
+    assert.equal(localHandled, false);
+    assert.equal(interaction.__calls.reply.length, 0);
+  } finally {
+    musicModule.musicInteractionHandler = originalHandler;
+  }
+});
+
+test("router confirma el boton y responde ephemeral si la precarga music falla", async () => {
+  const originalModule = interactionEvent.__test.getMusicInteractionModule();
+  interactionEvent.__test.setMusicInteractionModule(null);
+
+  try {
+    const interaction = createBaseInteraction({
+      kind: "button",
+      customId: "music:control:pause",
+    });
+    const client = { commands: new Collection(), musicManager: {} };
+
+    await interactionEvent.execute(interaction, client);
+
+    assert.equal(interaction.__calls.deferUpdate, 1);
+    assert.equal(interaction.__calls.followUp.length, 1);
+    assert.equal(interaction.__calls.followUp[0].flags, 64);
+    assert.equal(interaction.__calls.reply.length, 0);
+  } finally {
+    interactionEvent.__test.setMusicInteractionModule(originalModule);
+  }
 });

@@ -33,6 +33,43 @@ const activeInteractions = new Set();
 const SETTINGS_MUTATION_COMMANDS = new Set(["config", "setup", "verify"]);
 const SETTINGS_MUTATION_CUSTOM_ID_PREFIXES = ["cfg_center_", "setup_cmd_panel_"];
 const MUSIC_COMMANDS = new Set(["play", "skip", "stop", "pause", "resume", "queue", "nowplaying", "volume", "leave"]);
+let musicInteractionModule = null;
+
+try {
+  musicInteractionModule = require("ton618-music/src/handlers/musicInteractionHandler");
+} catch (error) {
+  logStructured("warn", "interaction.music.preload_failed", {
+    error: error?.message || String(error),
+  });
+}
+
+function getMusicInteractionHandler() {
+  const handler = musicInteractionModule?.musicInteractionHandler;
+  return typeof handler === "function" ? handler : null;
+}
+
+async function respondMusicUnavailable(interaction) {
+  const payload = {
+    content: "Music services are currently unavailable. Please try again later.",
+    flags: 64,
+  };
+
+  if (interaction.isButton?.()) {
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferUpdate().catch(() => {});
+    }
+    if (interaction.deferred || interaction.replied) {
+      await interaction.followUp(payload).catch(() => {});
+    }
+    return;
+  }
+
+  if (interaction.deferred || interaction.replied) {
+    await interaction.followUp(payload).catch(() => {});
+  } else {
+    await interaction.reply(payload).catch(() => {});
+  }
+}
 
 function clearCachedSettings(guildId) {
   if (!guildId) return;
@@ -372,14 +409,21 @@ module.exports = {
 
     try {
       if (interaction.isChatInputCommand() && MUSIC_COMMANDS.has(interaction.commandName)) {
-        if (client.musicManager) {
-          const { musicInteractionHandler } = require("ton618-music/src/handlers/musicInteractionHandler");
+        const musicInteractionHandler = getMusicInteractionHandler();
+        if (client.musicManager && musicInteractionHandler) {
           await musicInteractionHandler(interaction);
         } else {
-          await interaction.reply({
-            content: "Music services are currently unavailable. Please try again later.",
-            flags: 64,
-          }).catch(() => {});
+          await respondMusicUnavailable(interaction);
+        }
+        return;
+      }
+
+      if (interaction.isButton() && interaction.customId?.startsWith("music:")) {
+        const musicInteractionHandler = getMusicInteractionHandler();
+        if (client.musicManager && musicInteractionHandler) {
+          await musicInteractionHandler(interaction);
+        } else {
+          await respondMusicUnavailable(interaction);
         }
         return;
       }
@@ -456,8 +500,10 @@ module.exports = {
         // Delegate to music module if available
         if (client.musicManager) {
           try {
-            const { musicInteractionHandler } = require("ton618-music/src/handlers/musicInteractionHandler");
-            await musicInteractionHandler(interaction);
+            const musicInteractionHandler = getMusicInteractionHandler();
+            if (musicInteractionHandler) {
+              await musicInteractionHandler(interaction);
+            }
           } catch (err) {
             // Only log actual errors; gracefully skip if command simply not found
             if (err?.message && !err.message.includes("not found") && !err.message.includes("Unknown interaction")) {
@@ -704,5 +750,11 @@ module.exports.__test = {
   },
   clearSettingsCache() {
     clearGuildSettingsCache("*");
+  },
+  getMusicInteractionModule() {
+    return musicInteractionModule;
+  },
+  setMusicInteractionModule(module) {
+    musicInteractionModule = module;
   },
 };
