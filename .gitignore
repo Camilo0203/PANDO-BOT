@@ -5,6 +5,7 @@ node_modules/
 .env
 .env.*
 !.env.example
+!.env.lavalink.example
 
 # Logs
 logs/
@@ -20,6 +21,7 @@ tmp/
 
 # Tokens/cache
 .youtube-tokens.json
+.env.lavalink
 *.json.bak
 
 # IDE/Editor
