@@ -220,8 +220,10 @@ function createDiscordClient(healthState) {
   });
 
   client.commands = new Collection();
+
+  // === MÚSICA (migrado desde ton618-music en 2025-Q4) ===
   try {
-    const { MusicManager } = require("ton618-music/src/music/MusicManager");
+    const { MusicManager } = require("./src/music/MusicManager");
     client.musicManager = new MusicManager(client);
     logger.info("startup.music", "MusicManager initialized");
   } catch (err) {
@@ -230,20 +232,23 @@ function createDiscordClient(healthState) {
 
   try {
     if (client.musicManager) {
-      const { VoiceStateMonitor } = require("ton618-music/src/services/VoiceStateMonitor");
+      const { VoiceStateMonitor } = require("./src/music/services/VoiceStateMonitor");
       const voiceMonitor = new VoiceStateMonitor(client, client.musicManager);
       voiceMonitor.start();
       client.voiceStateMonitor = voiceMonitor;
     }
 
-    const { YouTubeTokenService } = require("ton618-music/src/services/YouTubeTokenService");
+    const { YouTubeTokenService } = require("./src/music/services/YouTubeTokenService");
     const youtubeTokenService = new YouTubeTokenService();
     youtubeTokenService.start().catch((err) => {
       logger.warn("startup.music", "YouTubeTokenService failed to start, continuing without tokens", { error: err?.message });
     });
     client.youtubeTokenService = youtubeTokenService;
 
-    logger.info("startup.music", "VoiceStateMonitor + YouTubeTokenService initialized");
+    const { SearchCacheService } = require("./src/music/services/SearchCacheService");
+    client.searchCache = new SearchCacheService({ cacheTTL: 3600000, maxSessionTTL: 300000 });
+
+    logger.info("startup.music", "VoiceStateMonitor + YouTubeTokenService + SearchCacheService initialized");
   } catch (err) {
     logger.warn("startup.music", "Music services partially unavailable", { error: err?.message });
   }

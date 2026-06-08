@@ -26,7 +26,6 @@
     "migrate:settings": "node scripts/migrate-settings-schema.js",
     "db:indexes": "node scripts/ensure-indexes.js",
     "build:ts": "tsc --noEmit",
-    "deploy:music": "node node_modules/ton618-music/scripts/deploy-music-commands.js",
     "test:concurrency:votes": "node scripts/test-concurrency-votes.js",
     "test": "node --test tests/*.test.js",
     "generate:keys": "node scripts/generate-production-keys.js",
@@ -53,7 +52,6 @@
     "playwright": "^1.52.0",
     "rss-parser": "^3.13.0",
     "shoukaku": "^4.3.0",
-    "ton618-music": "file:../ton618-music",
     "undici": "^7.26.0",
     "vhost": "^3.0.2",
     "youtubei.js": "^17.0.1"
