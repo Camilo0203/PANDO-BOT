@@ -15,7 +15,7 @@ const {
   stopMetricsReporter,
   flushWindowSummary,
 } = require("./src/utils/observability");
-const { quickValidate, validateAllEnv } = require("./src/utils/envValidator");
+const { quickValidate, validateAllEnv, validateProductionEnv } = require("./src/utils/envValidator");
 const { loadAndValidateCommands } = require("./src/utils/commandLoader");
 const { parseBoolean, resolveRuntimePort } = require("./src/utils/envHelpers");
 const {
@@ -154,8 +154,8 @@ function validateEnvironmentOrThrow() {
     throw error;
   }
 
-  // Full validation
-  const envCheck = validateAllEnv();
+  // Full validation (uses strict production checks if NODE_ENV=production)
+  const envCheck = process.env.NODE_ENV === "production" ? validateProductionEnv() : validateAllEnv();
 
   for (const warning of envCheck.warnings) {
     // Unknown env vars are common in containerized environments (Square Cloud, etc.)

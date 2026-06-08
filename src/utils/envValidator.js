@@ -193,14 +193,31 @@ function validateAllEnv() {
     if (mongoUri && !/(tls|ssl)=true/.test(mongoUri) && !mongoUri.includes("mongodb+srv://")) {
       warnings.push("MONGO_URI does not enforce TLS/SSL in production. Consider adding ?tls=true or using mongodb+srv://");
     }
+    
+    // CRITICAL: Encryption keys (must not be empty in production)
+    const encryptionKeyPattern = /^[a-f0-9]{64}$/i;
     if (!process.env.ENCRYPTION_KEY) {
-      errors.push("ENCRYPTION_KEY is not set; secure storage features will be disabled. Set to a 64-char hex string.");
+      errors.push("🔴 CRITICAL: ENCRYPTION_KEY is not set. This key is required for secure data storage. Generate with: node scripts/generate-production-keys.js");
+    } else if (!encryptionKeyPattern.test(process.env.ENCRYPTION_KEY)) {
+      errors.push("🔴 CRITICAL: ENCRYPTION_KEY format invalid. Must be 64 hexadecimal characters (256-bit). Generate with: node scripts/generate-production-keys.js");
     }
+    
     if (!process.env.HASH_SALT) {
-      errors.push("HASH_SALT is not set; stable hashing features will use fallback. Must be at least 32 characters.");
+      errors.push("🔴 CRITICAL: HASH_SALT is not set. This salt is required for consistent hashing. Generate with: node scripts/generate-production-keys.js");
+    } else if (process.env.HASH_SALT.length < 32) {
+      errors.push("🔴 CRITICAL: HASH_SALT must be at least 32 characters long. Generate with: node scripts/generate-production-keys.js");
     }
+    
     if (!process.env.DASH_API_KEY) {
-      errors.push("DASH_API_KEY is not set; the internal dashboard at dash.ton618bot.xyz has NO authentication. Set a secure random key.");
+      errors.push("🔴 CRITICAL: DASH_API_KEY is not set. Dashboard has NO authentication without this. Generate with: node scripts/generate-production-keys.js");
+    } else if (process.env.DASH_API_KEY.length < 32) {
+      errors.push("🔴 CRITICAL: DASH_API_KEY must be at least 32 characters. Generate with: node scripts/generate-production-keys.js");
+    }
+    
+    if (!process.env.BOT_API_KEY) {
+      errors.push("🔴 CRITICAL: BOT_API_KEY is not set. This key is required for Supabase communication. Generate with: node scripts/generate-production-keys.js");
+    } else if (process.env.BOT_API_KEY.length < 32) {
+      errors.push("🔴 CRITICAL: BOT_API_KEY must be at least 32 characters. Generate with: node scripts/generate-production-keys.js");
     }
   }
 
@@ -244,8 +261,31 @@ function quickValidate() {
   return { valid: true, missing: [] };
 }
 
+/**
+ * Validate production environment - strict checks
+ * @returns {{valid: boolean, errors: string[], warnings: string[]}}
+ */
+function validateProductionEnv() {
+  const result = validateAllEnv();
+  
+  if (!result.valid) {
+    console.error('\n❌ PRODUCTION VALIDATION FAILED:');
+    result.errors.forEach(err => console.error(`  ${err}`));
+    console.error('\nℹ️  Generate production keys with: node scripts/generate-production-keys.js\n');
+  }
+  
+  if (result.warnings.length > 0) {
+    console.warn('\n⚠️  PRODUCTION WARNINGS:');
+    result.warnings.forEach(warn => console.warn(`  ${warn}`));
+    console.warn();
+  }
+  
+  return result;
+}
+
 module.exports = {
   validateAllEnv,
+  validateProductionEnv,
   getEnv,
   quickValidate,
   ENV_SCHEMA,

@@ -28,11 +28,16 @@
     "build:ts": "tsc --noEmit",
     "deploy:music": "node node_modules/ton618-music/scripts/deploy-music-commands.js",
     "test:concurrency:votes": "node scripts/test-concurrency-votes.js",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "generate:keys": "node scripts/generate-production-keys.js",
+    "validate:production": "NODE_ENV=production node scripts/validate-production.js",
+    "health:check": "node scripts/health-check.js",
+    "logs": "tail -f logs/bot.log 2>/dev/null || echo 'No logs available'",
+    "restart": "npm stop && npm start",
+    "stop": "pm2 stop ton618-bot 2>/dev/null || echo 'Bot not running'"
   },
   "dependencies": {
     "@ton618/shared": "file:../ton618-shared",
-    "ton618-music": "file:../ton618-music",
     "axios": "^1.6.7",
     "chalk": "^5.6.2",
     "cors": "^2.8.6",
@@ -43,11 +48,12 @@
     "helmet": "^8.2.0",
     "kazagumo": "^3.4.3",
     "mongodb": "^7.1.0",
-    "mongodb-mcp-server": "^1.9.0",
+    "mongodb-mcp-server": "^0.2.0",
     "node-cron": "^4.2.1",
     "playwright": "^1.52.0",
     "rss-parser": "^3.13.0",
     "shoukaku": "^4.3.0",
+    "ton618-music": "file:../ton618-music",
     "undici": "^7.26.0",
     "vhost": "^3.0.2",
     "youtubei.js": "^17.0.1"
