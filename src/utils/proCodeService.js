@@ -94,6 +94,177 @@ function calculateExpiration(durationDays) {
   return new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
 }
 
+function getSupabaseConfig() {
+  return {
+    url: String(process.env.SUPABASE_URL || "").trim().replace(/\/+$/, ""),
+    serviceRoleKey: String(process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim(),
+  };
+}
+
+async function supabaseRequest(path, options = {}) {
+  const { url, serviceRoleKey } = getSupabaseConfig();
+  if (!url || !serviceRoleKey) {
+    return { skipped: true, data: null };
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const response = await fetch(`${url}/rest/v1/${path}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        apikey: serviceRoleKey,
+        Authorization: `Bearer ${serviceRoleKey}`,
+        ...(options.headers || {}),
+      },
+      signal: controller.signal,
+    });
+
+    const text = await response.text();
+    if (!response.ok) {
+      throw new Error(`Supabase ${response.status}: ${text.slice(0, 180)}`);
+    }
+
+    return {
+      skipped: false,
+      data: text ? JSON.parse(text) : null,
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function syncTebexEntitlement(redemption, expiresAt) {
+  if (redemption.provider !== "tebex") return { skipped: true };
+
+  const { url, serviceRoleKey } = getSupabaseConfig();
+  if (!url || !serviceRoleKey) {
+    logger.warn("proCodeService", "Supabase entitlement sync skipped because billing credentials are not configured");
+    return { skipped: true };
+  }
+
+  const userId = String(redemption.redeemed_by);
+  const guildId = String(redemption.redeemed_guild_id);
+  const isLifetime = redemption.duration_days === null;
+  const tier = redemption.tier
+    || (isLifetime ? "lifetime" : redemption.duration_days <= 31 ? "pro_monthly" : "pro_yearly");
+  const providerSubscriptionId = redemption.provider_subscription_id || null;
+
+  await supabaseRequest("users?on_conflict=discord_user_id", {
+    method: "POST",
+    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify({
+      discord_user_id: userId,
+      username: userId,
+      updated_at: new Date().toISOString(),
+    }),
+  });
+
+  const existingResult = await supabaseRequest(
+    `guild_subscriptions?guild_id=eq.${encodeURIComponent(guildId)}&status=in.(active,cancelled,past_due)&select=id&order=updated_at.desc&limit=1`,
+    { method: "GET", headers: { Accept: "application/json" } }
+  );
+  const existingId = Array.isArray(existingResult.data) ? existingResult.data[0]?.id : null;
+  const payload = {
+    guild_id: guildId,
+    discord_user_id: userId,
+    provider: "tebex",
+    provider_order_id: redemption.provider_order_id || redemption.code,
+    provider_customer_id: userId,
+    provider_subscription_id: providerSubscriptionId,
+    plan_key: tier,
+    kind: isLifetime ? "premium_lifetime" : "premium_subscription",
+    billing_type: providerSubscriptionId ? "subscription" : "one_time",
+    status: "active",
+    premium_enabled: true,
+    cancel_at_period_end: false,
+    renews_at: null,
+    ends_at: isLifetime || !expiresAt ? null : expiresAt.toISOString(),
+    lifetime: isLifetime,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (existingId) {
+    await supabaseRequest(`guild_subscriptions?id=eq.${encodeURIComponent(existingId)}`, {
+      method: "PATCH",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify(payload),
+    });
+  } else {
+    await supabaseRequest("guild_subscriptions", {
+      method: "POST",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify(payload),
+    });
+  }
+
+  return { skipped: false };
+}
+
+async function revokeTebexEntitlement(guildId, reason = "tebex_revoked") {
+  const now = new Date();
+  const guildSettings = await settings.get(guildId);
+
+  if (guildSettings) {
+    const patch = buildCommercialSettingsPatch(guildSettings, {
+      plan: "free",
+      plan_source: reason,
+      plan_expires_at: now,
+      updated_at: now,
+    });
+    await settings.update(guildId, patch);
+  }
+
+  const db = getDB();
+  if (db) {
+    await db.collection("premium_cache").updateOne(
+      { guild_id: guildId },
+      {
+        $set: {
+          has_premium: false,
+          tier: null,
+          lifetime: false,
+          expires_at: now.toISOString(),
+          revoked_at: now,
+          revoke_reason: reason,
+          app_cache_expires_at: new Date(now.getTime() + 60 * 60 * 1000),
+          ttl_expires_at: new Date(now.getTime() + 60 * 60 * 1000),
+          cached_at: now,
+          source: "tebex_revocation",
+        },
+      },
+      { upsert: true }
+    );
+  }
+
+  try {
+    await supabaseRequest(
+      `guild_subscriptions?guild_id=eq.${encodeURIComponent(guildId)}&provider=eq.tebex&premium_enabled=eq.true`,
+      {
+        method: "PATCH",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({
+          status: "expired",
+          premium_enabled: false,
+          ends_at: now.toISOString(),
+          cancelled_at: now.toISOString(),
+          updated_at: now.toISOString(),
+        }),
+      }
+    );
+  } catch (error) {
+    logger.error("proCodeService", "Failed to revoke Tebex entitlement in Supabase", {
+      guildId,
+      error: error?.message || String(error),
+    });
+    throw error;
+  }
+
+  return { success: true };
+}
+
 /**
  * Activa PRO en un servidor usando un código redimido
  * @param {Object} redemption - Datos de la redención
@@ -137,6 +308,29 @@ async function activateProInGuild(redemption) {
 
     await settings.update(guildId, patch);
 
+    try {
+      await syncTebexEntitlement(redemption, newExpiresAt);
+    } catch (syncError) {
+      logger.error("proCodeService", "Failed to persist Tebex entitlement in Supabase", {
+        guildId,
+        error: syncError?.message || String(syncError),
+      });
+      try {
+        const rollbackPatch = buildCommercialSettingsPatch(
+          guildSettings,
+          currentState.commercialSettings,
+          { now }
+        );
+        await settings.update(guildId, rollbackPatch);
+      } catch (rollbackError) {
+        logger.error("proCodeService", "Failed to roll back guild settings after billing sync error", {
+          guildId,
+          error: rollbackError?.message || String(rollbackError),
+        });
+      }
+      return { success: false, error: "billing_sync_failed" };
+    }
+
     // Sync premium_cache so premiumService reflects activation immediately
     try {
       const db = getDB();
@@ -153,7 +347,9 @@ async function activateProInGuild(redemption) {
               lifetime: durationDays === null,
               expires_at: newExpiresAt ? newExpiresAt.toISOString() : null,
               owner_user_id: redemption.redeemed_by || null,
-              app_cache_expires_at: new Date(cacheNow.getTime() + 5 * 60 * 1000),
+              app_cache_expires_at: newExpiresAt
+                ? new Date(newExpiresAt)
+                : new Date(cacheNow.getTime() + 10 * 365 * 24 * 60 * 60 * 1000),
               ttl_expires_at: newExpiresAt
                 ? new Date(newExpiresAt.getTime() + 60 * 60 * 1000)
                 : new Date(cacheNow.getTime() + 10 * 365 * 24 * 60 * 60 * 1000),
@@ -265,6 +461,8 @@ module.exports = {
   resolveDuration,
   calculateExpiration,
   activateProInGuild,
+  revokeTebexEntitlement,
+  syncTebexEntitlement,
   processRedemption,
   isGuildOwner,
   DURATION_PRESETS,

@@ -31,6 +31,14 @@ async function createCode(codeData) {
     redeemed_guild_id: null,
     notes: codeData.notes || null,
     source: codeData.source || "manual",
+    tier: codeData.tier || null,
+    provider: codeData.provider || null,
+    provider_order_id: codeData.provider_order_id || null,
+    provider_subscription_id: codeData.provider_subscription_id || null,
+    purchaser_user_id: codeData.purchaser_user_id || null,
+    revoked: false,
+    revoked_at: null,
+    revoke_reason: null,
     used: false,
     _id: undefined,
   };
@@ -66,6 +74,10 @@ async function validateCode(code) {
     return { valid: false, reason: "already_redeemed", codeData };
   }
 
+  if (codeData.revoked) {
+    return { valid: false, reason: "revoked", codeData };
+  }
+
   if (codeData.expires_at && new Date() > new Date(codeData.expires_at)) {
     return { valid: false, reason: "expired", codeData };
   }
@@ -93,6 +105,7 @@ async function redeemCode(code, userId, guildId) {
     {
       code: code.toUpperCase(),
       redeemed: false,
+      revoked: { $ne: true },
       $or: [
         { expires_at: null },
         { expires_at: { $exists: false } },
@@ -115,6 +128,7 @@ async function redeemCode(code, userId, guildId) {
     const existing = await codesCollection.findOne({ code: code.toUpperCase() });
     if (!existing) return { success: false, error: "not_found" };
     if (existing.redeemed) return { success: false, error: "already_redeemed" };
+    if (existing.revoked) return { success: false, error: "revoked" };
     if (existing.expires_at && new Date() > new Date(existing.expires_at)) {
       return { success: false, error: "expired" };
     }
@@ -132,6 +146,10 @@ async function redeemCode(code, userId, guildId) {
     code_created_by: codeData.created_by,
     code_created_at: codeData.created_at,
     source: codeData.source,
+    tier: codeData.tier || null,
+    provider: codeData.provider || null,
+    provider_order_id: codeData.provider_order_id || null,
+    provider_subscription_id: codeData.provider_subscription_id || null,
   };
 
   await redemptionsCollection.insertOne(redemption);
@@ -294,6 +312,54 @@ async function rollbackRedemption(code) {
   return { success: true };
 }
 
+async function findRedemptionByProvider({ provider = "tebex", orderId = null, subscriptionId = null } = {}) {
+  const db = getDB();
+  const query = { provider };
+
+  if (subscriptionId) {
+    query.provider_subscription_id = String(subscriptionId);
+  } else if (orderId) {
+    query.provider_order_id = String(orderId);
+  } else {
+    return null;
+  }
+
+  return db.collection(REDEMPTIONS_COLLECTION)
+    .find(query)
+    .sort({ redeemed_at: -1 })
+    .limit(1)
+    .next();
+}
+
+async function revokeProviderCodes({
+  provider = "tebex",
+  orderId = null,
+  subscriptionId = null,
+  reason = "provider_revoked",
+} = {}) {
+  const db = getDB();
+  const query = {
+    provider,
+    redeemed: false,
+  };
+
+  if (subscriptionId) {
+    query.provider_subscription_id = String(subscriptionId);
+  } else if (orderId) {
+    query.provider_order_id = String(orderId);
+  } else {
+    return { matchedCount: 0, modifiedCount: 0 };
+  }
+
+  return db.collection(COLLECTION_NAME).updateMany(query, {
+    $set: {
+      revoked: true,
+      revoked_at: new Date(),
+      revoke_reason: reason,
+    },
+  });
+}
+
 module.exports = {
   createCode,
   findByCode,
@@ -304,6 +370,8 @@ module.exports = {
   getStats,
   revokeCode,
   rollbackRedemption,
+  findRedemptionByProvider,
+  revokeProviderCodes,
   COLLECTION_NAME,
   REDEMPTIONS_COLLECTION,
 };

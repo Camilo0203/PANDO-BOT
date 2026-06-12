@@ -12,6 +12,30 @@ module.exports = {
     guild_only: "Este comando solo funciona en servidores.",
     owner_only: "Solo el dueño del servidor puede usar este comando.",
     plan_label: "Plan",
+    tier_labels: {
+      pro_monthly: "PRO Mensual",
+      pro_yearly: "PRO Anual",
+      lifetime: "De por vida"
+    },
+    activate: {
+      permission_title: "Permiso denegado",
+      permission_description: "Solo el dueño del servidor puede activar un plan PRO.",
+      failed_title: "No se pudo activar PRO",
+      not_found: "Ese código no existe. Revísalo e inténtalo de nuevo.",
+      already_redeemed: "Ese código ya fue utilizado.",
+      expired: "Ese código ha expirado.",
+      revoked: "Ese código fue revocado porque el pago relacionado ya no es válido.",
+      guild_not_found: "Este servidor aún no ha configurado el bot. Ejecuta `/setup` primero.",
+      activation_failed: "El código es válido, pero la activación falló. Contacta a soporte.",
+      billing_sync_failed: "El código es válido, pero el servicio de membresías no pudo guardar la activación. Inténtalo de nuevo en unos minutos.",
+      success_title: "PRO activado",
+      success_description: "**{{guild}}** ahora tiene PRO{{extension}}.\n\nTodas las funciones PRO ya están disponibles.",
+      extension_suffix: " (extendido)",
+      expires_label: "El plan vence",
+      activated_by: "Activado por",
+      lifetime: "De por vida",
+      footer: "TON618 PRO | Gracias por tu apoyo"
+    },
     pro_active: "✅ Tienes una membresía PRO activa con acceso a todas las funciones premium.",
     slash: {
       code_option: "Tu código de canje PRO (formato: XXXX-XXXX-XXXX)",
@@ -24,6 +48,7 @@ module.exports = {
       code_expired: "Este código ha expirado. Por favor contacta a soporte para obtener un nuevo código.",
       code_not_found: "El código que ingresaste no fue encontrado. Por favor verifica e intenta de nuevo.",
       code_used: "Este código ya ha sido canjeado. Cada código solo puede usarse una vez.",
+      code_revoked: "Este código fue revocado porque el pago relacionado ya no es válido.",
       days: "{{days}} días",
       duration_label: "Duración",
       error_title: "❌ Canje Fallido",

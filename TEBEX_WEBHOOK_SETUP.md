@@ -1,69 +1,74 @@
-# Configuración Webhook Tebex para TON618
+# Tebex Webhook Setup
 
-## Archivos creados/modificados
+TON618 uses the webhook hosted by `ton618-bot` as the canonical purchase and
+activation path.
 
-1. **Nuevo**: `src/web/apps/tebex.js` — Handler del webhook
-2. **Modificado**: `src/web/server.js` — Registro de la ruta `/webhook-tebex`
+## Endpoint
 
-## Variables de entorno en Square Cloud
+Configure this URL in **Tebex > Developers > Webhooks**:
 
-Accedé a tu panel de Square Cloud y agregá estas variables:
-
-| Variable | Valor | Descripción |
-|---|---|---|
-| `TEBEX_SECRET_KEY` | `73d98efc31c4cd7adb33bceecf38fdc3` | Tu Secret Key de Tebex para validar firmas |
-| `TEBEX_GUILD_ID` | `1214106731022655488` | ID del servidor Discord donde asignar roles |
-| `TEBEX_ROLE_MAP` | Ver abajo | Mapeo de paquetes Tebex a roles Discord |
-
-### Formato de TEBEX_ROLE_MAP
-
-Opción A (JSON):
-```json
-{"package_1":"role_id_1","package_2":"role_id_2"}
-```
-
-Opción B (simplificada, sin espacios):
-```
-package_1:role_id_1,package_2:role_id_2
-```
-
-Ejemplo real:
-```
-12345:987654321012345678,67890:987654321012345679
-```
-
-## Obtener IDs de paquetes y roles
-
-- **Package ID Tebex**: En tu panel de Tebex → Packages → copiá el ID del paquete
-- **Role ID Discord**: En Discord → Ajustes del servidor → Roles → Click derecho en el rol → Copiar ID de rol (necesitás modo desarrollador activado)
-
-## URL del webhook en Tebex
-
-En tu panel de Tebex → Webhooks → Configurá la URL:
-```
+```text
 https://ton618bot.xyz/webhook-tebex
 ```
 
-**Importante**: Seleccioná el evento `Payment Completed` (o `payment.completed`).
+Enable these events:
 
-## Probar el webhook
+- `payment.completed`
+- `payment.refunded`
+- `payment.dispute.lost`
+- `recurring-payment.renewed`
+- `recurring-payment.ended`
 
-Podés verificar que esté funcionando visitando:
+Tebex also sends `validation.webhook` automatically when the endpoint is
+created.
+
+## Required Environment Variables
+
+Configure values only in the production secret manager. Never paste real
+values into this repository.
+
+```text
+TEBEX_SECRET_KEY=<webhook-secret>
+TEBEX_PUBLIC_TOKEN=<headless-store-public-token>
+SUPABASE_URL=<project-url>
+SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
 ```
-https://ton618bot.xyz/webhook-tebex/health
+
+Optional overrides:
+
+```text
+TEBEX_ALLOWED_PKG_IDS=<comma-separated-package-ids>
+TEBEX_PACKAGE_TIER_MAP={"package-id":"pro_monthly"}
 ```
 
-Debería responder:
+Supported tier values are `pro_monthly`, `pro_yearly`, and `lifetime`.
+
+## Verification
+
+The health endpoint never returns secret values:
+
+```bash
+curl -fsS https://ton618bot.xyz/webhook-tebex/health
+```
+
+Expected shape:
+
 ```json
-{"status":"ok","configured":true,"roleMapEntries":2}
+{"status":"ok","configured":true,"packageTierMap":["..."]}
 ```
 
-## Logs
+After a sandbox purchase, verify:
 
-Los logs del webhook aparecen en la consola de Square Cloud con el prefijo `[TebexWebhook]`.
+1. The buyer receives a bilingual Discord DM with an activation code.
+2. `/premium activate <code>` works only for the server owner.
+3. `/premium status` shows the correct plan and expiration.
+4. A duplicate webhook does not create another usable code.
+5. A refund or ended recurring payment removes PRO.
 
-## Seguridad
+## Security
 
-- Nunca compartas tu `TEBEX_SECRET_KEY` públicamente
-- El webhook valida la firma HMAC-SHA256 de cada request
-- Si la firma no coincide, devuelve 401 Unauthorized
+- Rotate any webhook secret that has ever been committed or shared.
+- Validate the official `X-Signature` against the raw request body.
+- Keep technical errors in server logs; never include secrets in responses.
+- Do not configure the legacy Supabase role-assignment webhook as a second
+  purchase endpoint.

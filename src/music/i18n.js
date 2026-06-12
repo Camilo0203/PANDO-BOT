@@ -9,11 +9,11 @@
  * Ejemplo: t("music.error_voice_required", "es") -> locale "music.error_voice_required"
  */
 
-const { t: rootT, normalizeLanguage: rootNormalize } = require("../../utils/i18n");
+const { t: rootT, normalizeLanguage: rootNormalize } = require("../utils/i18n");
 
 const LOCALES = {
-  en: require("../../locales/modules/en/music"),
-  es: require("../../locales/modules/es/music"),
+  en: require("../locales/modules/en/music"),
+  es: require("../locales/modules/es/music"),
 };
 
 const PREFIX = "music.";

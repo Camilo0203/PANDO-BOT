@@ -12,6 +12,30 @@ module.exports = {
     guild_only: "This command only works on servers.",
     owner_only: "Only the server owner can use this command.",
     plan_label: "Plan",
+    tier_labels: {
+      pro_monthly: "PRO Monthly",
+      pro_yearly: "PRO Yearly",
+      lifetime: "Lifetime"
+    },
+    activate: {
+      permission_title: "Permission denied",
+      permission_description: "Only the server owner can activate a PRO plan.",
+      failed_title: "Activation failed",
+      not_found: "That code does not exist. Check it and try again.",
+      already_redeemed: "This code has already been used.",
+      expired: "This code has expired.",
+      revoked: "This code was revoked because the related payment is no longer valid.",
+      guild_not_found: "This server has not set up the bot yet. Run `/setup` first.",
+      activation_failed: "The code is valid, but activation failed. Please contact support.",
+      billing_sync_failed: "The code is valid, but the membership service could not save the activation. Try again shortly.",
+      success_title: "PRO activated",
+      success_description: "**{{guild}}** now has PRO{{extension}}.\n\nAll PRO features are now available.",
+      extension_suffix: " (extended)",
+      expires_label: "Plan expires",
+      activated_by: "Activated by",
+      lifetime: "Lifetime",
+      footer: "TON618 PRO | Thank you for your support"
+    },
     pro_active: "✅ You have an active PRO membership with access to all premium features.",
     slash: {
       code_option: "Your PRO redemption code (format: XXXX-XXXX-XXXX)",
@@ -24,6 +48,7 @@ module.exports = {
       code_expired: "This code has expired. Please contact support for a new code.",
       code_not_found: "The code you entered was not found. Please verify and try again.",
       code_used: "This code has already been redeemed. Each code can only be used once.",
+      code_revoked: "This code was revoked because the related payment is no longer valid.",
       days: "{{days}} days",
       duration_label: "Duration",
       error_title: "❌ Redemption Failed",

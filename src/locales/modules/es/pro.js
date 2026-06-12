@@ -15,6 +15,7 @@ module.exports = {
       error_title: "❌ Canje Fallido",
       code_not_found: "El código ingresado no fue encontrado. Verifica e intenta de nuevo.",
       code_used: "Este código ya fue canjeado. Cada código solo puede usarse una vez.",
+      code_revoked: "Este código fue revocado porque el pago relacionado ya no es válido.",
       code_expired: "Este código ha expirado. Contacta soporte para obtener uno nuevo.",
       invalid_code: "El código ingresado no es válido.",
       processing_error: "Hubo un error procesando tu canje. Intenta de nuevo o contacta soporte.",

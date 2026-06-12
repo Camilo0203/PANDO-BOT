@@ -87,8 +87,8 @@ module.exports = {
         embeds: [
           new EmbedBuilder()
             .setColor(0xED4245)
-            .setTitle("\u274C Permission denied")
-            .setDescription("Only the server owner can activate a PRO plan."),
+            .setTitle(t(language, "premium.activate.permission_title"))
+            .setDescription(t(language, "premium.activate.permission_description")),
         ],
         flags: 64,
       });
@@ -106,19 +106,23 @@ module.exports = {
       );
 
       if (!result.success) {
-        const reasons = {
-          not_found: "That code doesn't exist. Check it and try again.",
-          already_redeemed: "This code has already been used.",
-          expired: "This code has expired.",
-          guild_not_found: "This server hasn't set up the bot yet. Try running `/setup` first.",
-          activation_failed: "Code was valid but activation failed. Please contact support.",
-        };
+        const reasonKey = [
+          "not_found",
+          "already_redeemed",
+          "expired",
+          "revoked",
+          "guild_not_found",
+          "activation_failed",
+          "billing_sync_failed",
+        ].includes(result.error)
+          ? result.error
+          : "activation_failed";
         return interaction.editReply({
           embeds: [
             new EmbedBuilder()
               .setColor(0xED4245)
-              .setTitle("\u274C Activation failed")
-              .setDescription(reasons[result.error] || `Error: \`${result.error}\``),
+              .setTitle(t(language, "premium.activate.failed_title"))
+              .setDescription(t(language, `premium.activate.${reasonKey}`)),
           ],
         });
       }
@@ -126,23 +130,25 @@ module.exports = {
       const { activation } = result;
       const isLifetime = activation.planExpiresAt === null;
       const expiresText = isLifetime
-        ? "\u221e Lifetime"
+        ? `\u221e ${t(language, "premium.activate.lifetime")}`
         : `<t:${Math.floor(new Date(activation.planExpiresAt).getTime() / 1000)}:D>`;
 
       return interaction.editReply({
         embeds: [
           new EmbedBuilder()
             .setColor(0x57F287)
-            .setTitle("\u2705 PRO Activated!")
-            .setDescription(
-              `**${interaction.guild.name}** now has PRO${activation.isExtension ? " (extended)" : ""}.\n\n` +
-              `All PRO features are now available."`
-            )
+            .setTitle(t(language, "premium.activate.success_title"))
+            .setDescription(t(language, "premium.activate.success_description", {
+              guild: interaction.guild.name,
+              extension: activation.isExtension
+                ? t(language, "premium.activate.extension_suffix")
+                : "",
+            }))
             .addFields(
-              { name: "Plan expires", value: expiresText, inline: true },
-              { name: "Activated by", value: `<@${interaction.user.id}>`, inline: true }
+              { name: t(language, "premium.activate.expires_label"), value: expiresText, inline: true },
+              { name: t(language, "premium.activate.activated_by"), value: `<@${interaction.user.id}>`, inline: true }
             )
-            .setFooter({ text: "TON618 PRO \u00b7 Thank you for your support" })
+            .setFooter({ text: t(language, "premium.activate.footer") })
             .setTimestamp(),
         ],
       });
@@ -240,7 +246,9 @@ module.exports = {
         const premiumFields = [
           {
             name: t(language, "premium.plan_label"),
-            value: status.tierLabel || "PRO",
+            value: status.tier && ["pro_monthly", "pro_yearly", "lifetime"].includes(status.tier)
+              ? t(language, `premium.tier_labels.${status.tier}`)
+              : status.tierLabel || "PRO",
             inline: true,
           },
           {

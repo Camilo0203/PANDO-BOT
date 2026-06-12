@@ -15,6 +15,7 @@ module.exports = {
       error_title: "❌ Redemption Failed",
       code_not_found: "The code you entered was not found. Please verify and try again.",
       code_used: "This code has already been redeemed. Each code can only be used once.",
+      code_revoked: "This code was revoked because the related payment is no longer valid.",
       code_expired: "This code has expired. Please contact support for a new code.",
       invalid_code: "The code you entered is invalid.",
       processing_error: "There was an error processing your redemption. Please try again or contact support.",

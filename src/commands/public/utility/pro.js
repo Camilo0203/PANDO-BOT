@@ -144,6 +144,8 @@ module.exports = {
           ? "pro.redeem.code_not_found"
           : validation.reason === "already_redeemed"
           ? "pro.redeem.code_used"
+          : validation.reason === "revoked"
+          ? "pro.redeem.code_revoked"
           : validation.reason === "expired"
           ? "pro.redeem.code_expired"
           : "pro.redeem.invalid_code";

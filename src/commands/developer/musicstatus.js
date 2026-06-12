@@ -1,10 +1,10 @@
 "use strict";
 
 const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
-const { createMusicErrorEmbed, COLORS } = require("../../../music/utils/musicEmbeds");
-const { t, normalizeLanguage } = require("../../../music/i18n");
-const logger = require("../../../utils/structuredLogger");
-const { ensureDeferred, safeRespond } = require("../../../music/utils/interactionResponses");
+const { createMusicErrorEmbed, COLORS } = require("../../music/utils/musicEmbeds");
+const { t, normalizeLanguage } = require("../../music/i18n");
+const logger = require("../../utils/structuredLogger");
+const { ensureDeferred, safeRespond } = require("../../music/utils/interactionResponses");
 
 const log = { info: (msg, meta) => logger.info("Music.STATUS", msg, meta || {}) };
 

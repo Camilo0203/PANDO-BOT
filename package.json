@@ -52,6 +52,7 @@
     "playwright": "^1.52.0",
     "rss-parser": "^3.13.0",
     "shoukaku": "^4.3.0",
+    "ton618-music": "file:../ton618-music",
     "undici": "^7.26.0",
     "vhost": "^3.0.2",
     "youtubei.js": "^17.0.1"
