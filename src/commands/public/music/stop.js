@@ -14,7 +14,13 @@ const log = {
 
 const data = new SlashCommandBuilder()
   .setName("stop")
-  .setDescription("Detiene la reproducción, limpia la cola y desconecta el bot");
+  .setDescription("Detiene la reproducción, limpia la cola y desconecta el bot")
+  .setDescriptionLocalizations({
+    "en-US": "Stop playback, clear the queue, and disconnect the bot",
+    "en-GB": "Stop playback, clear the queue, and disconnect the bot",
+    "es-ES": "Detiene la reproducción, limpia la cola y desconecta el bot",
+    "es-419": "Detiene la reproducción, limpia la cola y desconecta el bot",
+  });
 
 module.exports = {
   data,

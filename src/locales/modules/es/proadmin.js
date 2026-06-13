@@ -5,7 +5,7 @@ module.exports = {
     available_codes_stat: "✅ Disponible",
     codes_label: "🎫 Códigos",
     days: "{{días}} días",
-    dm_description: "Aquí está tu código PRO exclusivo de canje:\n\n**Código:** `{{code}}`\n**Duración:** {{duración}}\n\nUsa este código en tu servidor con `/pro redeem` para activar características PRO!",
+    dm_description: "Aquí tienes tu código exclusivo de activación PRO:\n\n**Código:** `{{code}}`\n**Duración:** {{duración}}\n\nEjecuta `/premium activate` en el servidor que administras para activar PRO.",
     dm_failed: "❌ Fallido",
     dm_footer: "TON618 - Membresía Premium",
     dm_sent: "📨 MD Enviado",
@@ -22,7 +22,7 @@ module.exports = {
     list_title: "📋 Inventario de Códigos PRO",
     no_codes: "No hay códigos disponibles",
     none: "Ninguno",
-    redeem_instructions: "1. Ve a tu servidor de Discord\n2. Ejecuta `/pro redeem`\n3. Ingresa tu código: `{{code}}`",
+    redeem_instructions: "1. Ve al servidor de Discord que administras\n2. Ejecuta `/premium activate`\n3. Ingresa tu código: `{{code}}`",
     redeemed_codes: "🎟️ Canjeados Recientemente ({{cantidad}})",
     redeemed_codes_stat: "🎟️ Canjeados",
     slash: {

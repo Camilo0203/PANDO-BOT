@@ -67,6 +67,7 @@ const _health = require("./modules/es/health.js");
 const _quickstart = require("./modules/es/quickstart.js");
 const _premium_test = require("./modules/es/premium_test.js");
 const _pro = require("./modules/es/pro.js");
+const _tutorial = require("./modules/es/tutorial.js");
 
 module.exports = {
   ..._access,
@@ -136,4 +137,5 @@ module.exports = {
   ..._quickstart,
   ..._premium_test,
   ..._pro,
+  ..._tutorial,
 };

@@ -6,7 +6,7 @@ const {
   createSearchPaginationButtons,
   SEARCH_ACTIONS,
 } = require("../../music/utils/musicComponents");
-const logger = require("../../../utils/structuredLogger");
+const logger = require("../../utils/structuredLogger");
 
 const log = { debug: (msg, meta) => logger.debug("Music.SEARCHHANDLER", msg, meta || {}), error: (msg, meta) => logger.error("Music.SEARCHHANDLER", msg, meta || {}) };
 

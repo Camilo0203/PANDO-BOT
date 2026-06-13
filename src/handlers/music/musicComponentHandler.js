@@ -31,14 +31,15 @@ const {
   MusicControlService,
 } = require("../../music/services/MusicControlService");
 const { t, normalizeLanguage } = require("../../music/i18n");
-const logger = require("../../../utils/structuredLogger");
+const logger = require("../../utils/structuredLogger");
+const { getProStoreUrl } = require("../../utils/proStore");
 
 const log = {
   warn: (msg, meta) => logger.warn("Music.COMPHANDLER", msg, meta || {}),
   error: (msg, meta) => logger.error("Music.COMPHANDLER", msg, meta || {}),
 };
 
-const UPGRADE_URL = process.env.PRO_UPGRADE_URL || "https://ton618.app/pricing";
+const UPGRADE_URL = getProStoreUrl();
 const controlLocks = new Map();
 const ALLOWED_GUILD_IDS = new Set(
   (process.env.MUSIC_ALLOWED_GUILD_ID || process.env.MUSIC_ALLOWED_GUILD_IDS || "")

@@ -296,7 +296,7 @@ test("PRO_UPGRADE_URL usa variable de entorno con fallback", async () => {
   const embedFields2 = responses2[0].payload.embeds[0].data.fields;
   const upgradeField2 = embedFields2.find(f => f.name.includes('Get Premium'));
   
-  assert.equal(upgradeField2.value.includes('ton618.app/pricing'), true);
+  assert.equal(upgradeField2.value.includes('store.ton618bot.xyz'), true);
   
   // Restore
   if (originalEnv) {

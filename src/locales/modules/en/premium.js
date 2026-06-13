@@ -83,11 +83,11 @@ module.exports = {
       features_label: "✨ What's included in PRO?",
       features_value: "• Advanced ticket system with SLA and escalation\n• Operational playbooks and automatic intelligence\n• Enterprise verification with CAPTCHA and risk analysis\n• Advanced automod and security modules\n• Detailed stats and reports\n• Priority support",
       how_to_buy_label: "🛒 How to purchase?",
-      how_to_buy_value: "1. Visit our website or support server\n2. Choose your plan and complete payment\n3. You will receive an activation code\n4. Use `/pro redeem` with your code to activate it",
+      how_to_buy_value: "1. Open the official TON618 Tebex store\n2. Choose your plan and complete the secure checkout\n3. You will receive an activation code by Discord DM\n4. Run `/premium activate` in the server you own",
       redeem_label: "🔑 Already have a code?",
-      redeem_value: "Use the `/pro redeem` command to activate your PRO plan.",
+      redeem_value: "Run `/premium activate` with your Tebex purchase code.",
       link_label: "🌐 More information",
-      no_url: "Contact our support server to purchase PRO.",
+      no_url: "Open the official TON618 Tebex store to purchase PRO.",
       footer: "TON618 PRO • Premium support for your server"
     },
     source_label: "Source",
@@ -97,7 +97,7 @@ module.exports = {
     supporter_active: "✅ Active",
     supporter_status: "Supporter Status",
     time_remaining: "Time remaining",
-    upgrade_cta: "Get Pro — open a ticket on our support server",
+    upgrade_cta: "Buy PRO securely in the official Tebex store",
     upgrade_label: "🚀 Get Pro",
     middleware: {
       server_only: "❌ This command can only be used in a server.",

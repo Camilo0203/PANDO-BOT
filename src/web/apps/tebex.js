@@ -11,6 +11,7 @@ const {
 } = require("../../utils/proCodeService");
 const {
   createCode,
+  findAvailableCodeByProviderEffect,
   findRedemptionByProvider,
   revokeProviderCodes,
 } = require("../../utils/database/proRedeemCodes");
@@ -24,6 +25,7 @@ const REVOKE_EVENTS = new Set([
   "recurring-payment.ended",
 ]);
 const PROCESSING_TIMEOUT_MS = 5 * 60 * 1000;
+const DISCORD_ID_PATTERN = /^\d{17,20}$/;
 
 const DEFAULT_PACKAGE_TIER_MAP = Object.freeze({
   "7434172": "pro_monthly",
@@ -130,8 +132,10 @@ function extractDiscordIdentity(body, packages = extractPackages(body)) {
     || (typeof player?.username === "string" ? player.username : null)
     || null;
 
+  const normalizedId = id ? String(id).trim() : "";
+
   return {
-    id: id ? String(id) : null,
+    id: DISCORD_ID_PATTERN.test(normalizedId) ? normalizedId : null,
     username: displayName ? String(displayName) : null,
   };
 }
@@ -273,14 +277,32 @@ async function markEvent(eventId, status, error = null) {
   );
 }
 
-async function processGrantEvent({ body, eventType, eventId, client, packageTierMap }) {
+async function processGrantEvent({
+  body,
+  eventType,
+  eventId,
+  client,
+  packageTierMap = DEFAULT_PACKAGE_TIER_MAP,
+  services = {},
+}) {
+  const claimEffect = services.claimEvent || claimEvent;
+  const markEffect = services.markEvent || markEvent;
+  const createActivationCode = services.createCode || createCode;
+  const findAvailableCode = services.findAvailableCodeByProviderEffect
+    || findAvailableCodeByProviderEffect;
+  const findProviderRedemption = services.findRedemptionByProvider
+    || findRedemptionByProvider;
+  const redeemActivationCode = services.processRedemption || processRedemption;
+  const revokeCodes = services.revokeProviderCodes || revokeProviderCodes;
+  const deliverDirectMessage = services.sendDirectMessage || sendDirectMessage;
+  const generateActivationCode = services.generateCode || generateCode;
   const packages = extractPackages(body);
   const identity = extractDiscordIdentity(body, packages);
   const providerOrderId = getProviderOrderId(body) || eventId;
   const providerSubscriptionId = getProviderSubscriptionId(body);
   const paymentSequence = String(getPaymentPayload(body)?.payment_sequence || "").toLowerCase();
   const effectId = `tebex:grant:${providerOrderId}`;
-  const effectClaimed = await claimEvent(effectId, eventType);
+  const effectClaimed = await claimEffect(effectId, eventType);
   if (!effectClaimed) {
     logger.info("tebex", "Duplicate purchase effect ignored", { eventType, providerOrderId });
     return;
@@ -291,7 +313,7 @@ async function processGrantEvent({ body, eventType, eventId, client, packageTier
   let previousRedemption = null;
 
   if (renewalSignal && providerSubscriptionId) {
-    previousRedemption = await findRedemptionByProvider({
+    previousRedemption = await findProviderRedemption({
       provider: "tebex",
       subscriptionId: providerSubscriptionId,
     });
@@ -305,7 +327,7 @@ async function processGrantEvent({ body, eventType, eventId, client, packageTier
 
     let processedPackages = 0;
 
-    for (const pkg of packages) {
+    for (const [packageIndex, pkg] of packages.entries()) {
       const packageId = String(pkg?.id || pkg?.package_id || "");
       const tierInfo = getTierAndDuration(packageId, packageTierMap);
       if (!tierInfo) {
@@ -313,24 +335,41 @@ async function processGrantEvent({ body, eventType, eventId, client, packageTier
         continue;
       }
 
-      const code = generateCode(12);
-      await createCode({
-        code,
-        plan: "pro",
-        tier: tierInfo.tier,
-        duration_days: tierInfo.durationDays,
-        created_by: "tebex_webhook",
-        expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
-        notes: `Tebex ${tierInfo.tier} event=${eventId}`,
-        source: isRenewal ? "tebex_renewal" : "tebex_purchase",
+      const packageEffectId = `${providerOrderId}:${packageId}:${packageIndex}`;
+      let codeRecord = await findAvailableCode({
         provider: "tebex",
-        provider_order_id: providerOrderId,
-        provider_subscription_id: providerSubscriptionId,
-        purchaser_user_id: identity.id || previousRedemption?.redeemed_by || null,
+        effectId: packageEffectId,
       });
 
+      if (codeRecord?.redeemed) {
+        processedPackages += 1;
+        continue;
+      }
+
+      if (!codeRecord) {
+        const code = generateActivationCode(12);
+        codeRecord = await createActivationCode({
+          code,
+          plan: "pro",
+          tier: tierInfo.tier,
+          duration_days: tierInfo.durationDays,
+          created_by: "tebex_webhook",
+          expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+          notes: `Tebex ${tierInfo.tier} event=${eventId}`,
+          source: isRenewal ? "tebex_renewal" : "tebex_purchase",
+          provider: "tebex",
+          provider_order_id: providerOrderId,
+          provider_subscription_id: providerSubscriptionId,
+          provider_effect_id: packageEffectId,
+          provider_package_id: packageId,
+          purchaser_user_id: identity.id || previousRedemption?.redeemed_by || null,
+        });
+      }
+
+      const code = codeRecord.code;
+
       if (isRenewal) {
-        const result = await processRedemption(
+        const result = await redeemActivationCode(
           code,
           previousRedemption.redeemed_by,
           previousRedemption.redeemed_guild_id,
@@ -339,19 +378,19 @@ async function processGrantEvent({ body, eventType, eventId, client, packageTier
         if (!result.success) {
           throw new Error(`Automatic renewal activation failed: ${result.error}`);
         }
-        await sendDirectMessage(
+        await deliverDirectMessage(
           client,
           previousRedemption.redeemed_by,
           buildPurchaseEmbed({ code, tier: tierInfo.tier, renewal: true })
         );
       } else {
-        const sent = await sendDirectMessage(
+        const sent = await deliverDirectMessage(
           client,
           identity.id,
           buildPurchaseEmbed({ code, tier: tierInfo.tier, renewal: false })
         );
         if (!sent) {
-          await revokeProviderCodes({
+          await revokeCodes({
             provider: "tebex",
             orderId: providerOrderId,
             reason: "delivery_failed",
@@ -367,14 +406,19 @@ async function processGrantEvent({ body, eventType, eventId, client, packageTier
       logger.info("tebex", "Webhook contained no mapped PRO packages", { eventType, eventId });
     }
 
-    await markEvent(effectId, "processed");
+    await markEffect(effectId, "processed");
   } catch (error) {
-    await markEvent(effectId, "failed", error?.message || String(error)).catch(() => {});
+    await markEffect(effectId, "failed", error?.message || String(error)).catch(() => {});
     throw error;
   }
 }
 
-async function processRevokeEvent({ body, eventType, client }) {
+async function processRevokeEvent({ body, eventType, client, services = {} }) {
+  const findProviderRedemption = services.findRedemptionByProvider
+    || findRedemptionByProvider;
+  const revokeCodes = services.revokeProviderCodes || revokeProviderCodes;
+  const revokeEntitlement = services.revokeTebexEntitlement || revokeTebexEntitlement;
+  const deliverDirectMessage = services.sendDirectMessage || sendDirectMessage;
   const packages = extractPackages(body);
   const identity = extractDiscordIdentity(body, packages);
   const providerOrderId = getProviderOrderId(body);
@@ -384,15 +428,15 @@ async function processRevokeEvent({ body, eventType, client }) {
     orderId: providerOrderId,
     subscriptionId: providerSubscriptionId,
   };
-  const redemption = await findRedemptionByProvider(lookup);
+  const redemption = await findProviderRedemption(lookup);
 
-  await revokeProviderCodes({
+  await revokeCodes({
     ...lookup,
     reason: eventType,
   });
 
   if (redemption?.redeemed_guild_id) {
-    await revokeTebexEntitlement(redemption.redeemed_guild_id, `tebex:${eventType}`);
+    await revokeEntitlement(redemption.redeemed_guild_id, `tebex:${eventType}`);
   } else {
     logger.warn("tebex", "No redeemed guild found for revocation event", {
       eventType,
@@ -401,7 +445,7 @@ async function processRevokeEvent({ body, eventType, client }) {
     });
   }
 
-  await sendDirectMessage(
+  await deliverDirectMessage(
     client,
     redemption?.redeemed_by || identity.id,
     buildRevocationEmbed()
@@ -432,14 +476,14 @@ function createTebexApp({ getClient }) {
     const eventType = String(body?.type || body?.event || "unknown");
     const eventId = String(body?.id || "");
 
-    if (eventType === "validation.webhook") {
-      return res.status(200).json({ id: body?.id });
-    }
-
     const signature = req.headers["x-signature"] || req.headers["x-tebex-signature"] || "";
     if (!verifyTebexSignature(rawBody, signature, secret)) {
       logger.warn("tebex", "Rejected webhook with invalid signature", { eventType, eventId });
       return res.status(401).json({ error: "invalid_signature" });
+    }
+
+    if (eventType === "validation.webhook") {
+      return res.status(200).json({ id: body?.id });
     }
 
     if (!eventId) {
@@ -502,6 +546,8 @@ module.exports = {
   getProviderOrderId,
   getProviderSubscriptionId,
   getTierAndDuration,
+  processGrantEvent,
+  processRevokeEvent,
   GRANT_EVENTS,
   REVOKE_EVENTS,
 };

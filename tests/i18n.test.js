@@ -18,9 +18,19 @@ test("resolveInteractionLanguage prioriza bot_language del servidor", () => {
   assert.equal(resolveInteractionLanguage(interaction, { bot_language: "es" }), "es");
 });
 
+test("resolveInteractionLanguage usa Discord antes de completar onboarding", () => {
+  const interaction = { locale: "es-ES", guildLocale: "es-ES" };
+  const defaults = {
+    bot_language: "en",
+    language_onboarding_completed: false,
+    language_selected_at: null,
+    language_selected_by: null,
+  };
+  assert.equal(resolveInteractionLanguage(interaction, defaults), "es");
+});
+
 test("t traduce e interpola variables", () => {
   const msg = t("en", "interaction.command_disabled", { commandName: "ping" });
   assert.match(msg, /ping/);
   assert.match(msg, /disabled/i);
 });
-

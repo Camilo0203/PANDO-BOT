@@ -25,7 +25,7 @@ function resolveErrorLogFile(timestamp = new Date()) {
 const SENSITIVE_LOG_FIELDS = [
   /token/i, /secret/i, /password/i, /key/i, /auth/i,
   /authorization/i, /cookie/i, /session/i, /content/i,
-  /message/i, /user.*id/i, /guild.*id/i, /channel.*id/i,
+  /user.*id/i, /guild.*id/i, /channel.*id/i,
   /email/i, /discord_token/i, /webhook_url/i, /api_key/i,
 ];
 
@@ -82,4 +82,3 @@ module.exports = {
   resolveErrorLogFile,
   writeErrorLogEntry,
 };
-

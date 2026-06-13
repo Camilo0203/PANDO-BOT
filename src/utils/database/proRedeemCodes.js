@@ -35,6 +35,8 @@ async function createCode(codeData) {
     provider: codeData.provider || null,
     provider_order_id: codeData.provider_order_id || null,
     provider_subscription_id: codeData.provider_subscription_id || null,
+    provider_effect_id: codeData.provider_effect_id || null,
+    provider_package_id: codeData.provider_package_id || null,
     purchaser_user_id: codeData.purchaser_user_id || null,
     revoked: false,
     revoked_at: null,
@@ -331,6 +333,20 @@ async function findRedemptionByProvider({ provider = "tebex", orderId = null, su
     .next();
 }
 
+async function findAvailableCodeByProviderEffect({
+  provider = "tebex",
+  effectId = null,
+} = {}) {
+  if (!effectId) return null;
+
+  const db = getDB();
+  return db.collection(COLLECTION_NAME).findOne({
+    provider,
+    provider_effect_id: String(effectId),
+    revoked: { $ne: true },
+  });
+}
+
 async function revokeProviderCodes({
   provider = "tebex",
   orderId = null,
@@ -371,6 +387,7 @@ module.exports = {
   revokeCode,
   rollbackRedemption,
   findRedemptionByProvider,
+  findAvailableCodeByProviderEffect,
   revokeProviderCodes,
   COLLECTION_NAME,
   REDEMPTIONS_COLLECTION,

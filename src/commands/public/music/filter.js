@@ -10,16 +10,28 @@ const {
 const { t, normalizeLanguage } = require("../../../music/i18n");
 const logger = require("../../../utils/structuredLogger");
 const { ensureDeferred, safeRespond } = require("../../../music/utils/interactionResponses");
+const { getProStoreUrl } = require("../../../utils/proStore");
 
 const log = { error: (msg, meta) => logger.error("Music.FILTER", msg, meta || {}) };
 
-const UPGRADE_URL = process.env.PRO_UPGRADE_URL || "https://ton618.app/pricing";
+const UPGRADE_URL = getProStoreUrl();
 
 const data = new SlashCommandBuilder()
   .setName("filter")
   .setDescription("Aplica un filtro de audio [Solo PRO]")
+  .setDescriptionLocalizations({
+    "en-US": "Apply an audio filter [PRO Only]",
+    "en-GB": "Apply an audio filter [PRO Only]",
+    "es-ES": "Aplica un filtro de audio [Solo PRO]",
+    "es-419": "Aplica un filtro de audio [Solo PRO]",
+  })
   .addStringOption((opt) =>
-    opt.setName("tipo").setDescription("Tipo de filtro a aplicar").setRequired(true).addChoices(
+    opt.setName("tipo").setDescription("Tipo de filtro a aplicar").setDescriptionLocalizations({
+      "en-US": "Filter type to apply",
+      "en-GB": "Filter type to apply",
+      "es-ES": "Tipo de filtro a aplicar",
+      "es-419": "Tipo de filtro a aplicar",
+    }).setRequired(true).addChoices(
       { name: "🔊 Bass Boost", value: "bassboost" },
       { name: "⚡ Nightcore", value: "nightcore" },
       { name: "🌊 Vaporwave", value: "vaporwave" },

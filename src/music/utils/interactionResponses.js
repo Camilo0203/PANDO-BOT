@@ -1,7 +1,7 @@
 "use strict";
 
 const os = require("os");
-const logger = require("../../../utils/structuredLogger");
+const logger = require("../../utils/structuredLogger");
 
 const log = {
   warn: (msg, meta) => logger.warn("Music.IRES", msg, meta || {}),

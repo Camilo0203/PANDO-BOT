@@ -90,7 +90,7 @@ function createHelpInteraction({
     memberPermissions: member.permissions,
     client: { commands },
     options: {
-      getString: (name) => (name === "comando" ? input : null),
+      getString: (name) => (name === "command" || name === "comando" ? input : null),
       getFocused: () => focused,
     },
     reply: async (payload) => {

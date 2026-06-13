@@ -62,7 +62,7 @@ function requireEnv(key) {
 
 function getNode(prefix) {
   const password = process.env[`LAVALINK_${prefix}_PASSWORD`];
-  if (!password && process.env.NODE_ENV !== "test") {
+  if (!password) {
     throw new Error(
       `LAVALINK_${prefix}_PASSWORD is required. ` +
       `Never use the default Lavalink password in production. ` +
@@ -76,15 +76,18 @@ function getNode(prefix) {
   return {
     name: prefix.toLowerCase(),
     url: `${host}:${port}`,
-    auth: password || "test-password",
+    auth: password,
     secure: (process.env[`LAVALINK_${prefix}_SECURE`] || "false") === "true",
   };
 }
 
-const LAVALINK_NODES = {
-  PRO: getNode("PRO"),
-  FREE: getNode("PRO"),
-};
+function getLavalinkNodes() {
+  const primary = getNode("PRO");
+  return {
+    PRO: primary,
+    FREE: primary,
+  };
+}
 
 const LIVE_TIER_LIMITS = getTierLimitsFromEnv();
 
@@ -100,7 +103,7 @@ const TIMEOUTS = {
 };
 
 module.exports = {
-  LAVALINK_NODES,
+  getLavalinkNodes,
   TIER_LIMITS: LIVE_TIER_LIMITS,
   CIRCUIT_BREAKER,
   TIMEOUTS,

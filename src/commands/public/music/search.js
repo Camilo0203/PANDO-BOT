@@ -21,9 +21,25 @@ const log = {
 const data = new SlashCommandBuilder()
   .setName("search")
   .setDescription("Busca canciones sin reproducirlas")
-  .addStringOption((opt) => opt.setName("query").setDescription("Nombre de la canción o artista").setRequired(true))
+  .setDescriptionLocalizations({
+    "en-US": "Search for songs without playing them",
+    "en-GB": "Search for songs without playing them",
+    "es-ES": "Busca canciones sin reproducirlas",
+    "es-419": "Busca canciones sin reproducirlas",
+  })
+  .addStringOption((opt) => opt.setName("query").setDescription("Nombre de la canción o artista").setDescriptionLocalizations({
+    "en-US": "Song or artist name",
+    "en-GB": "Song or artist name",
+    "es-ES": "Nombre de la canción o artista",
+    "es-419": "Nombre de la canción o artista",
+  }).setRequired(true))
   .addStringOption((opt) =>
-    opt.setName("source").setDescription("Fuente de búsqueda (youtube | spotify)").setRequired(false).addChoices(
+    opt.setName("source").setDescription("Fuente de búsqueda (youtube | spotify)").setDescriptionLocalizations({
+      "en-US": "Search source (YouTube or Spotify)",
+      "en-GB": "Search source (YouTube or Spotify)",
+      "es-ES": "Fuente de búsqueda (YouTube o Spotify)",
+      "es-419": "Fuente de búsqueda (YouTube o Spotify)",
+    }).setRequired(false).addChoices(
       { name: "YouTube", value: "youtube" },
       { name: "Spotify", value: "spotify" }
     )

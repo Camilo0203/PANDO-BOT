@@ -15,6 +15,7 @@ const { t, normalizeLanguage } = require("../../../music/i18n");
 const logger = require("../../../utils/structuredLogger");
 const { ensureDeferred, safeRespond } = require("../../../music/utils/interactionResponses");
 const { createPlayerControls } = require("../../../music/utils/musicComponents");
+const { getProStoreUrl } = require("../../../utils/proStore");
 
 const log = {
   info: (msg, meta) => logger.info("Music.PLAY", msg, meta || {}),
@@ -22,14 +23,25 @@ const log = {
   error: (msg, meta) => logger.error("Music.PLAY", msg, meta || {}),
 };
 
-const UPGRADE_URL = process.env.PRO_UPGRADE_URL || "https://ton618.app/pricing";
+const UPGRADE_URL = getProStoreUrl();
 const FORCED_TIER = ["free", "pro"].includes(process.env.MUSIC_FORCE_TIER) ? process.env.MUSIC_FORCE_TIER : null;
 
 const data = new SlashCommandBuilder()
   .setName("play")
   .setDescription("Reproduce una canción o playlist en tu canal de voz")
+  .setDescriptionLocalizations({
+    "en-US": "Play a song or playlist in your voice channel",
+    "en-GB": "Play a song or playlist in your voice channel",
+    "es-ES": "Reproduce una canción o playlist en tu canal de voz",
+    "es-419": "Reproduce una canción o playlist en tu canal de voz",
+  })
   .addStringOption((opt) =>
-    opt.setName("query").setDescription("Nombre de la canción, URL de YouTube o Spotify (PRO)").setRequired(true)
+    opt.setName("query").setDescription("Nombre de la canción, URL de YouTube o Spotify (PRO)").setDescriptionLocalizations({
+      "en-US": "Song name, YouTube URL, or Spotify URL (PRO)",
+      "en-GB": "Song name, YouTube URL, or Spotify URL (PRO)",
+      "es-ES": "Nombre de la canción, URL de YouTube o Spotify (PRO)",
+      "es-419": "Nombre de la canción, URL de YouTube o Spotify (PRO)",
+    }).setRequired(true)
   );
 
 module.exports = {

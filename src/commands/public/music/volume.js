@@ -12,13 +12,25 @@ const { t, normalizeLanguage } = require("../../../music/i18n");
 const logger = require("../../../utils/structuredLogger");
 const { ensureDeferred, safeRespond } = require("../../../music/utils/interactionResponses");
 const { MusicControlService } = require("../../../music/services/MusicControlService");
+const { getProStoreUrl } = require("../../../utils/proStore");
 
 const log = { error: (msg, meta) => logger.error("Music.VOLUME", msg, meta || {}) };
 
 const data = new SlashCommandBuilder()
   .setName("volume")
   .setDescription("Ajusta el volumen de reproducción")
-  .addIntegerOption((opt) => opt.setName("nivel").setDescription("Nivel de volumen (FREE: 1-80, PRO: 1-100)").setMinValue(1).setMaxValue(100).setRequired(true));
+  .setDescriptionLocalizations({
+    "en-US": "Adjust playback volume",
+    "en-GB": "Adjust playback volume",
+    "es-ES": "Ajusta el volumen de reproducción",
+    "es-419": "Ajusta el volumen de reproducción",
+  })
+  .addIntegerOption((opt) => opt.setName("nivel").setDescription("Nivel de volumen (FREE: 1-80, PRO: 1-100)").setDescriptionLocalizations({
+    "en-US": "Volume level (FREE: 1-80, PRO: 1-100)",
+    "en-GB": "Volume level (FREE: 1-80, PRO: 1-100)",
+    "es-ES": "Nivel de volumen (FREE: 1-80, PRO: 1-100)",
+    "es-419": "Nivel de volumen (FREE: 1-80, PRO: 1-100)",
+  }).setMinValue(1).setMaxValue(100).setRequired(true));
 
 module.exports = {
   data,
@@ -44,7 +56,7 @@ module.exports = {
     const tier = await resolveGuildTier(interaction.guildId);
     const limits = TIER_LIMITS[tier] || TIER_LIMITS.free;
     const requested = interaction.options.getInteger("nivel");
-    const UPGRADE_URL = process.env.PRO_UPGRADE_URL || "https://ton618.app/pricing";
+    const UPGRADE_URL = getProStoreUrl();
 
     if (requested > limits.maxVolume) {
       const msg = tier === "free"

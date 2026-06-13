@@ -13,7 +13,7 @@
  */
 
 const EventEmitter = require("events");
-const logger = require("../../../utils/structuredLogger");
+const logger = require("../../utils/structuredLogger");
 
 const log = {
   info: (ctx, msg, meta) => logger.info("Music.FAILOVER", msg, { ...meta, component: ctx }),

@@ -106,11 +106,6 @@ function validateEnv(env = process.env, options = {}) {
     warnings.push("BOT_API_KEY is not set. Premium features will be disabled.");
   }
 
-  const proUpgradeUrl = env.PRO_UPGRADE_URL;
-  if (strictProduction && (!proUpgradeUrl || !proUpgradeUrl.trim())) {
-    warnings.push("PRO_UPGRADE_URL is not set. Premium upgrade embeds will show no link.");
-  }
-
   // Square Cloud health check requires PORT=80
   if (strictProduction) {
     const prodPort = resolveRuntimePort(env, { defaultPort: 80 });

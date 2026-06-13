@@ -9,6 +9,7 @@ const {
   resolveGuildPremiumStatus,
 } = require("../../../utils/premiumStatus");
 const { processRedemption } = require("../../../utils/proCodeService");
+const { getProStoreHostname, getProStoreUrl } = require("../../../utils/proStore");
 const logger = require("../../../utils/structuredLogger");
 
 function toDiscordDate(value) {
@@ -20,7 +21,7 @@ function toDiscordDate(value) {
   return `<t:${Math.floor(parsed.getTime() / 1000)}:D>`;
 }
 
-const PRO_UPGRADE_URL = process.env.PRO_UPGRADE_URL || null;
+const PRO_UPGRADE_URL = getProStoreUrl();
 
 const data = withInlineDescriptionLocalizations(
   new SlashCommandBuilder()
@@ -181,11 +182,11 @@ module.exports = {
         .setFooter({ text: t(language, "premium.info.footer") })
         .setTimestamp();
 
-      if (PRO_UPGRADE_URL) {
-        embed.addFields({ name: t(language, "premium.info.link_label"), value: `[ton618.app/pricing](${PRO_UPGRADE_URL})`, inline: false });
-      } else {
-        embed.addFields({ name: t(language, "premium.info.link_label"), value: t(language, "premium.info.no_url"), inline: false });
-      }
+      embed.addFields({
+        name: t(language, "premium.info.link_label"),
+        value: `[${getProStoreHostname(PRO_UPGRADE_URL)}](${PRO_UPGRADE_URL})`,
+        inline: false,
+      });
 
       return interaction.reply({ embeds: [embed], flags: 64 });
     }

@@ -83,11 +83,11 @@ module.exports = {
       features_label: "✨ ¿Qué incluye PRO?",
       features_value: "• Sistema de tickets avanzado con SLA y escalado\n• Playbooks operacionales e inteligencia automática\n• Verificación enterprise con CAPTCHA y análisis de riesgo\n• Automod avanzado y módulos de seguridad\n• Estadísticas y reportes detallados\n• Soporte prioritario",
       how_to_buy_label: "🛒 ¿Cómo comprar?",
-      how_to_buy_value: "1. Visita nuestro sitio web o servidor de soporte\n2. Elige tu plan y realiza el pago\n3. Recibirás un código de activación\n4. Usa `/pro redeem` con tu código para activarlo",
+      how_to_buy_value: "1. Abre la tienda oficial de TON618 en Tebex\n2. Elige tu plan y completa el pago seguro\n3. Recibirás un código de activación por mensaje directo de Discord\n4. Ejecuta `/premium activate` en el servidor que administras",
       redeem_label: "🔑 ¿Ya tienes un código?",
-      redeem_value: "Usa el comando `/pro redeem` para activar tu plan PRO.",
+      redeem_value: "Ejecuta `/premium activate` con el código de compra de Tebex.",
       link_label: "🌐 Más información",
-      no_url: "Contacta con nuestro servidor de soporte para adquirir PRO.",
+      no_url: "Abre la tienda oficial de TON618 en Tebex para comprar PRO.",
       footer: "TON618 PRO • Soporte premium para tu servidor"
     },
     source_label: "Origen",
@@ -97,7 +97,7 @@ module.exports = {
     supporter_active: "✅ Activo",
     supporter_status: "Estado Supporter",
     time_remaining: "Tiempo restante",
-    upgrade_cta: "Obtener Pro — abre un ticket en nuestro servidor de soporte",
+    upgrade_cta: "Compra PRO de forma segura en la tienda oficial de Tebex",
     upgrade_label: "🚀 Obtener Pro",
     middleware: {
       server_only: "❌ Este comando solo se puede usar en un servidor.",

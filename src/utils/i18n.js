@@ -193,7 +193,20 @@ function resolveInteractionLanguage(
   guildSettings = null,
   fallback = DEFAULT_LANGUAGE
 ) {
-  const configured = normalizeLanguage(guildSettings?.bot_language, "");
+  const hasOnboardingFlag = Boolean(
+    guildSettings
+    && Object.prototype.hasOwnProperty.call(guildSettings, "language_onboarding_completed")
+  );
+  const hasExplicitGuildLanguage = Boolean(
+    guildSettings?.language_onboarding_completed
+    || guildSettings?.language_selected_at
+    || guildSettings?.language_selected_by
+    || guildSettings?.bot_language === "es"
+    || (guildSettings?.bot_language === "en" && !hasOnboardingFlag)
+  );
+  const configured = hasExplicitGuildLanguage
+    ? normalizeLanguage(guildSettings?.bot_language, "")
+    : "";
   if (configured) return configured;
 
   const candidates = [

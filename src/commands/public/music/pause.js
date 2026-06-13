@@ -15,7 +15,13 @@ const log = { error: (msg, meta) => logger.error("Music.PAUSE", msg, meta || {})
 
 const data = new SlashCommandBuilder()
   .setName("pause")
-  .setDescription("Pausa o reanuda la reproducción");
+  .setDescription("Pausa o reanuda la reproducción")
+  .setDescriptionLocalizations({
+    "en-US": "Pause or resume playback",
+    "en-GB": "Pause or resume playback",
+    "es-ES": "Pausa o reanuda la reproducción",
+    "es-419": "Pausa o reanuda la reproducción",
+  });
 
 module.exports = {
   data,

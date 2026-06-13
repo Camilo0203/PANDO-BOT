@@ -63,6 +63,10 @@ const data = new SlashCommandBuilder()
         opt
           .setName("limit")
           .setDescription("Number of alerts to show (max 25)")
+          .setDescriptionLocalizations({
+            "es-ES": "N\u00famero de alertas a mostrar (m\u00e1ximo 25)",
+            "es-419": "N\u00famero de alertas a mostrar (m\u00e1ximo 25)",
+          })
           .setMinValue(1)
           .setMaxValue(25)
           .setRequired(false)
@@ -98,12 +102,20 @@ const data = new SlashCommandBuilder()
         opt
           .setName("indexes")
           .setDescription("Create MongoDB indexes")
+          .setDescriptionLocalizations({
+            "es-ES": "Crear \u00edndices de MongoDB",
+            "es-419": "Crear \u00edndices de MongoDB",
+          })
           .setRequired(false)
       )
       .addBooleanOption((opt) =>
         opt
           .setName("scheduler")
           .setDescription("Start security scheduler")
+          .setDescriptionLocalizations({
+            "es-ES": "Iniciar el programador de seguridad",
+            "es-419": "Iniciar el programador de seguridad",
+          })
           .setRequired(false)
       )
   )
@@ -119,6 +131,10 @@ const data = new SlashCommandBuilder()
         opt
           .setName("alert_id")
           .setDescription("Alert ID to acknowledge")
+          .setDescriptionLocalizations({
+            "es-ES": "ID de la alerta que se reconocer\u00e1",
+            "es-419": "ID de la alerta que se reconocer\u00e1",
+          })
           .setRequired(true)
       )
   )
@@ -143,6 +159,10 @@ const data = new SlashCommandBuilder()
         opt
           .setName("generate_key")
           .setDescription("Generate a new encryption key")
+          .setDescriptionLocalizations({
+            "es-ES": "Generar una nueva clave de cifrado",
+            "es-419": "Generar una nueva clave de cifrado",
+          })
           .setRequired(false)
       )
   );

@@ -163,7 +163,7 @@ async function syncTebexEntitlement(redemption, expiresAt) {
   });
 
   const existingResult = await supabaseRequest(
-    `guild_subscriptions?guild_id=eq.${encodeURIComponent(guildId)}&status=in.(active,cancelled,past_due)&select=id&order=updated_at.desc&limit=1`,
+    `guild_subscriptions?guild_id=eq.${encodeURIComponent(guildId)}&provider=eq.tebex&status=in.(active,cancelled,past_due)&select=id&order=updated_at.desc&limit=1`,
     { method: "GET", headers: { Accept: "application/json" } }
   );
   const existingId = Array.isArray(existingResult.data) ? existingResult.data[0]?.id : null;

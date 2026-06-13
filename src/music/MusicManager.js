@@ -13,10 +13,10 @@
 
 const { Kazagumo } = require("kazagumo");
 const { Connectors } = require("shoukaku");
-const { LAVALINK_NODES, TIER_LIMITS, TIMEOUTS } = require("./config/lavalinkConfig");
+const { getLavalinkNodes, TIER_LIMITS, TIMEOUTS } = require("./config/lavalinkConfig");
 const { NodeHealthMonitor } = require("./services/NodeHealthMonitor");
 const { TrackErrorHandler } = require("./services/TrackErrorHandler");
-const logger = require("../../utils/structuredLogger");
+const logger = require("../utils/structuredLogger");
 
 const log = {
   info: (msg, meta) => logger.info("Music.MANAGER", msg, meta || {}),
@@ -34,6 +34,7 @@ const NODE_READY_TIMEOUT_MS = 10000;
 class MusicManager {
   constructor(client) {
     this.client = client;
+    const lavalinkNodes = getLavalinkNodes();
 
     this.idleTimers = new Map();
     this.guildLocks = new Map();
@@ -42,14 +43,14 @@ class MusicManager {
 
     const nodes = [
       {
-        name: LAVALINK_NODES.PRO.name,
-        url: LAVALINK_NODES.PRO.url,
-        auth: LAVALINK_NODES.PRO.auth,
-        secure: LAVALINK_NODES.PRO.secure,
+        name: lavalinkNodes.PRO.name,
+        url: lavalinkNodes.PRO.url,
+        auth: lavalinkNodes.PRO.auth,
+        secure: lavalinkNodes.PRO.secure,
       },
     ];
 
-    this._primaryNodeName = LAVALINK_NODES.PRO.name;
+    this._primaryNodeName = lavalinkNodes.PRO.name;
     this._nodeForTier = { pro: this._primaryNodeName, free: this._primaryNodeName };
 
     for (const node of nodes) {

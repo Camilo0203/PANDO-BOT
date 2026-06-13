@@ -2,9 +2,10 @@ const { premiumService } = require('../services/premiumService');
 const { EmbedBuilder } = require('discord.js');
 const logger = require('./structuredLogger');
 const { t, normalizeLanguage, resolveInteractionLanguage } = require('./i18n');
+const { getProStoreUrl } = require('./proStore');
 
 // Configuration from environment with safe fallback
-const PRICING_URL = process.env.PRO_UPGRADE_URL || 'https://ton618.app/pricing';
+const PRICING_URL = getProStoreUrl();
 const INTERACTION_TIMEOUT_MS = 2900; // Discord's 3s limit with safety margin
 
 /**

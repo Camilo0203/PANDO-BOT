@@ -11,7 +11,7 @@
 const fs = require("fs");
 const path = require("path");
 const { Collection } = require("discord.js");
-const logger = require("../../../utils/structuredLogger");
+const logger = require("../../utils/structuredLogger");
 
 const log = {
   info: (msg, meta) => logger.info("Music.INTHANDLER", msg, meta || {}),

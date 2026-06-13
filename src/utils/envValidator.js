@@ -84,7 +84,8 @@ const ENV_SCHEMA = {
   HASH_SALT: { required: false, type: "string", pattern: /^.{32,}$/ },
 
   // Premium/Billing (optional)
-  PRO_UPGRADE_URL: { required: false, type: "string", default: "https://ton618.app/pricing" },
+  TEBEX_STORE_URL: { required: false, type: "string", default: "https://store.ton618bot.xyz/" },
+  PRO_UPGRADE_URL: { required: false, type: "string", default: "https://store.ton618bot.xyz/" },
   BOT_API_KEY: { required: false, type: "string" },
 
   // Web server

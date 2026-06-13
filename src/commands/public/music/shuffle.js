@@ -11,13 +11,20 @@ const { t, normalizeLanguage } = require("../../../music/i18n");
 const { ensureDeferred, safeRespond } = require("../../../music/utils/interactionResponses");
 const logger = require("../../../utils/structuredLogger");
 const { MusicControlService } = require("../../../music/services/MusicControlService");
+const { getProStoreUrl } = require("../../../utils/proStore");
 
 const log = { error: (msg, meta) => logger.error("Music.SHUFFLE", msg, meta || {}) };
-const UPGRADE_URL = process.env.PRO_UPGRADE_URL || "https://ton618.app/pricing";
+const UPGRADE_URL = getProStoreUrl();
 
 const data = new SlashCommandBuilder()
   .setName("shuffle")
-  .setDescription("Mezcla aleatoriamente la cola [Solo PRO]");
+  .setDescription("Mezcla aleatoriamente la cola [Solo PRO]")
+  .setDescriptionLocalizations({
+    "en-US": "Shuffle the queue [PRO Only]",
+    "en-GB": "Shuffle the queue [PRO Only]",
+    "es-ES": "Mezcla aleatoriamente la cola [Solo PRO]",
+    "es-419": "Mezcla aleatoriamente la cola [Solo PRO]",
+  });
 
 module.exports = {
   data,

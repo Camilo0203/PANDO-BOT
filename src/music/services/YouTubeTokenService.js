@@ -11,7 +11,7 @@
 const fs = require("fs");
 const path = require("path");
 const { Innertube, UniversalCache } = require("youtubei.js");
-const logger = require("../../../utils/structuredLogger");
+const logger = require("../../utils/structuredLogger");
 
 const log = {
   info: (msg, meta) => logger.info("Music.YTTOKEN", msg, meta || {}),

@@ -11,6 +11,7 @@ const { t, normalizeLanguage } = require("../../../music/i18n");
 const logger = require("../../../utils/structuredLogger");
 const { ensureDeferred, safeRespond } = require("../../../music/utils/interactionResponses");
 const { MusicControlService } = require("../../../music/services/MusicControlService");
+const { getProStoreUrl } = require("../../../utils/proStore");
 
 const log = {
   info: (msg, meta) => logger.info("Music.SKIP", msg, meta || {}),
@@ -20,8 +21,19 @@ const log = {
 const data = new SlashCommandBuilder()
   .setName("skip")
   .setDescription("Salta la canción actual")
+  .setDescriptionLocalizations({
+    "en-US": "Skip the current song",
+    "en-GB": "Skip the current song",
+    "es-ES": "Salta la canción actual",
+    "es-419": "Salta la canción actual",
+  })
   .addIntegerOption((opt) =>
-    opt.setName("cantidad").setDescription("Cuántas pistas saltar (PRO: hasta 10)").setMinValue(1).setMaxValue(10).setRequired(false)
+    opt.setName("cantidad").setDescription("Cuántas pistas saltar (PRO: hasta 10)").setDescriptionLocalizations({
+      "en-US": "How many tracks to skip (PRO: up to 10)",
+      "en-GB": "How many tracks to skip (PRO: up to 10)",
+      "es-ES": "Cuántas pistas saltar (PRO: hasta 10)",
+      "es-419": "Cuántas pistas saltar (PRO: hasta 10)",
+    }).setMinValue(1).setMaxValue(10).setRequired(false)
   );
 
 module.exports = {
@@ -56,7 +68,7 @@ module.exports = {
     let amount = interaction.options.getInteger("cantidad") ?? 1;
     if (amount > 1 && tier === "free") {
       return safeRespond(interaction, {
-        embeds: [createMusicWarningEmbed(t(language, "music.skip_pro_only", { url: process.env.PRO_UPGRADE_URL || "https://ton618.app/pricing" }), tier, language)],
+        embeds: [createMusicWarningEmbed(t(language, "music.skip_pro_only", { url: getProStoreUrl() }), tier, language)],
       });
     }
 

@@ -11,7 +11,7 @@
  *   - Detección de patterns de error de YouTube
  */
 
-const logger = require("../../../utils/structuredLogger");
+const logger = require("../../utils/structuredLogger");
 
 const log = {
   info: (msg, meta) => logger.info("Music.TRACKERR", msg, meta || {}),

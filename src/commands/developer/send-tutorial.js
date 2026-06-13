@@ -3,17 +3,25 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
 const { sendGuildLanguageOnboarding } = require("../../utils/guildOnboarding");
 const { settings } = require("../../utils/database");
-const { resolveGuildLanguage, t } = require("../../utils/i18n");
+const { resolveGuildLanguage, resolveInteractionLanguage, t } = require("../../utils/i18n");
 const { logCommandExecution } = require("../../utils/auditLogger");
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("send-tutorial")
-    .setDescription("[OWNER] Re-send the language onboarding tutorial to a server")
+    .setDescription(t("en", "tutorial.slash_description"))
+    .setDescriptionLocalizations({
+      "es-ES": t("es", "tutorial.slash_description"),
+      "es-419": t("es", "tutorial.slash_description"),
+    })
     .addStringOption((opt) =>
       opt
         .setName("guild_id")
-        .setDescription("Guild ID to send tutorial to (defaults to current server)")
+        .setDescription(t("en", "tutorial.guild_id_description"))
+        .setDescriptionLocalizations({
+          "es-ES": t("es", "tutorial.guild_id_description"),
+          "es-419": t("es", "tutorial.guild_id_description"),
+        })
         .setRequired(false)
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
@@ -23,23 +31,25 @@ module.exports = {
   },
 
   async execute(interaction) {
+    const interactionLanguage = resolveInteractionLanguage(interaction);
+
     // Owner-only check
     const ownerId = process.env.OWNER_ID || process.env.DISCORD_OWNER_ID;
     if (interaction.user.id !== ownerId) {
       return interaction.reply({
-        content: "❌ This command is only for the bot owner.",
-        ephemeral: true,
+        content: t(interactionLanguage, "tutorial.owner_only"),
+        flags: 64,
       });
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: 64 });
 
     const guildId = interaction.options.getString("guild_id") || interaction.guildId;
     const guild = interaction.client.guilds.cache.get(guildId);
 
     if (!guild) {
       return interaction.editReply({
-        content: `❌ Guild not found. The bot is not in guild \`${guildId}\`.`,
+        content: t(interactionLanguage, "tutorial.guild_not_found", { guildId }),
       });
     }
 
@@ -57,19 +67,28 @@ module.exports = {
 
     if (result.delivered) {
       logCommandExecution(interaction, "send-tutorial", { guildId, delivered: true, language });
-      
+
+      const deliveryDetails = [
+        t(interactionLanguage, "tutorial.delivery", { delivery: result.delivery }),
+        result.channelId
+          ? t(interactionLanguage, "tutorial.channel", { channelId: result.channelId })
+          : null,
+        result.userId
+          ? t(interactionLanguage, "tutorial.dm", { userId: result.userId })
+          : null,
+      ].filter(Boolean).join(" | ");
+
       return interaction.editReply({
-        content: `✅ Tutorial sent successfully to **${guild.name}**!\n` +
-          `📍 Delivery: ${result.delivery}${result.channelId ? ` (Channel: <#${result.channelId}>)` : ""}${result.userId ? ` (DM to: <@${result.userId}>)` : ""}`,
+        content: `${t(interactionLanguage, "tutorial.sent", { guildName: guild.name })}\n${deliveryDetails}`,
       });
     } else if (result.skipped) {
       return interaction.editReply({
-        content: `ℹ️ Tutorial was already completed for **${guild.name}**. Reset and try again.`,
+        content: t(interactionLanguage, "tutorial.already_completed", { guildName: guild.name }),
       });
     } else {
       return interaction.editReply({
-        content: `❌ Failed to send tutorial to **${guild.name}**.\n` +
-          `The bot may lack permissions or there are no writable channels.`,
+        content: `${t(interactionLanguage, "tutorial.failed", { guildName: guild.name })}\n`
+          + t(interactionLanguage, "tutorial.failed_hint"),
       });
     }
   },

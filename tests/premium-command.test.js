@@ -18,7 +18,7 @@ let currentStatus = {
   supporterActive: false,
   supporterExpiresAt: null,
   ownerUserId: null,
-  upgradeUrl: "https://ton618.app/pricing",
+  upgradeUrl: "https://store.ton618bot.xyz/",
   error: null,
   meta: {
     source: "default",
@@ -32,11 +32,23 @@ const mockPremiumStatus = {
   resolveGuildPremiumStatus: async () => currentStatus,
   isPremiumStatusUnavailable: (status) => Boolean(status?.error || status?.meta?.unavailable),
 };
+let redemptionResult = {
+  success: true,
+  activation: {
+    planExpiresAt: null,
+    isExtension: false,
+  },
+};
 
 const originalLoad = Module._load;
 Module._load = function (request, parent) {
   if (request === "../../../utils/premiumStatus") {
     return mockPremiumStatus;
+  }
+  if (request === "../../../utils/proCodeService") {
+    return {
+      processRedemption: async () => redemptionResult,
+    };
   }
 
   return originalLoad(request, parent);
@@ -50,13 +62,25 @@ test.after(() => {
   delete require.cache[require.resolve("../src/commands/public/utility/premium")];
 });
 
-function makeInteraction({ guildId = "guild-123", ownerId = "owner-1", userId = "owner-1", preferredLocale = "en-US" } = {}) {
+function makeInteraction({
+  guildId = "guild-123",
+  ownerId = "owner-1",
+  userId = "owner-1",
+  preferredLocale = "en-US",
+  subcommand = "status",
+} = {}) {
   const calls = [];
 
   const interaction = {
     guildId,
-    guild: { ownerId, preferredLocale },
+    guild: { ownerId, preferredLocale, name: "Test Guild" },
     user: { id: userId },
+    client: {},
+    locale: preferredLocale,
+    options: {
+      getSubcommand: () => subcommand,
+      getString: () => "ABCD-EFGH-IJKL",
+    },
     deferred: false,
     replied: false,
     reply: async (payload) => {
@@ -123,7 +147,7 @@ test("/premium status muestra FREE y link de upgrade para guild sin premium", as
     planExpiresAt: null,
     expiresAt: null,
     daysUntil: null,
-    upgradeUrl: "https://ton618.app/pricing",
+    upgradeUrl: "https://store.ton618bot.xyz/",
     error: null,
     meta: {
       source: "api",
@@ -140,7 +164,7 @@ test("/premium status muestra FREE y link de upgrade para guild sin premium", as
   const fields = editReply.payload.embeds[0].data.fields;
 
   assert.ok(fields.some((field) => field.value === "FREE"));
-  assert.ok(fields.some((field) => String(field.value).includes("https://ton618.app/pricing")));
+  assert.ok(fields.some((field) => String(field.value).includes("https://store.ton618bot.xyz/")));
 });
 
 test("/premium status responde error claro cuando la verificacion premium no esta disponible", async () => {
@@ -170,4 +194,55 @@ test("/premium status responde error claro cuando la verificacion premium no est
 
   assert.equal(editReply.payload.content, t("en", "premium.error_fetching"));
   assert.equal(editReply.payload.embeds, undefined);
+});
+
+test("/premium activate localiza permisos y exito en espanol", async () => {
+  const denied = makeInteraction({
+    subcommand: "activate",
+    preferredLocale: "es-ES",
+    userId: "member-1",
+  });
+  await premiumCommand.execute(denied);
+
+  const deniedReply = denied._getCalls().find((call) => call.type === "reply");
+  assert.equal(
+    deniedReply.payload.embeds[0].data.title,
+    t("es", "premium.activate.permission_title")
+  );
+
+  redemptionResult = {
+    success: true,
+    activation: {
+      planExpiresAt: null,
+      isExtension: false,
+    },
+  };
+  const success = makeInteraction({
+    subcommand: "activate",
+    preferredLocale: "es-ES",
+  });
+  await premiumCommand.execute(success);
+
+  const successReply = success._getCalls().find((call) => call.type === "editReply");
+  assert.equal(
+    successReply.payload.embeds[0].data.title,
+    t("es", "premium.activate.success_title")
+  );
+  assert.match(successReply.payload.embeds[0].data.description, /ahora tiene PRO/);
+});
+
+test("/premium activate no expone errores tecnicos", async () => {
+  redemptionResult = {
+    success: false,
+    error: "unexpected_internal_detail",
+  };
+  const interaction = makeInteraction({ subcommand: "activate" });
+  await premiumCommand.execute(interaction);
+
+  const editReply = interaction._getCalls().find((call) => call.type === "editReply");
+  assert.equal(
+    editReply.payload.embeds[0].data.description,
+    t("en", "premium.activate.activation_failed")
+  );
+  assert.equal(editReply.payload.embeds[0].data.description.includes("unexpected_internal_detail"), false);
 });

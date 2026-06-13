@@ -2,6 +2,7 @@
 
 const { premiumService } = require("../services/premiumService");
 const logger = require("./structuredLogger");
+const { getProStoreUrl } = require("./proStore");
 
 const PREMIUM_TIER_LABELS = {
   pro_monthly: "PRO Monthly",
@@ -55,7 +56,7 @@ async function resolveGuildPremiumStatus(guildId) {
       supporterActive: false,
       supporterExpiresAt: null,
       ownerUserId: premium?.owner_user_id || null,
-      upgradeUrl: process.env.PRO_UPGRADE_URL || null,
+      upgradeUrl: getProStoreUrl(),
       error: errorCode,
       meta: premium?._meta || {
         source: "unknown",
@@ -82,7 +83,7 @@ async function resolveGuildPremiumStatus(guildId) {
       supporterActive: false,
       supporterExpiresAt: null,
       ownerUserId: null,
-      upgradeUrl: process.env.PRO_UPGRADE_URL || null,
+      upgradeUrl: getProStoreUrl(),
       error: "premium_status_unavailable",
       meta: {
         source: "resolver_error",

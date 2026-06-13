@@ -598,11 +598,10 @@ async function handleEnterCode(interaction) {
 async function handleCodeModal(interaction) {
   const guild = interaction.guild;
   const user = interaction.user;
-  const [guildSettings, verificationSettings, state, member] = await Promise.all([
+  const [guildSettings, verificationSettings, state] = await Promise.all([
     settings.get(guild.id),
     verifSettings.get(guild.id),
     verifMemberStates.get(guild.id, user.id),
-    guild.members.fetch(user.id).catch(() => null),
   ]);
   const language = resolveInteractionLanguage(interaction, guildSettings);
 
@@ -647,6 +646,10 @@ async function handleCodeModal(interaction) {
       embeds: [E.errorEmbed(`${messages[result.reason] || t(language, "verify.handler.invalid_code")}${cooldownText}`)],
     });
   }
+
+  const member = guild.members?.fetch
+    ? await guild.members.fetch(user.id).catch(() => null)
+    : interaction.member || null;
 
   return completeVerification({
     interaction,

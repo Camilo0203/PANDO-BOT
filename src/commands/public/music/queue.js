@@ -18,7 +18,18 @@ const log = { error: (msg, meta) => logger.error("Music.QUEUE", msg, meta || {})
 const data = new SlashCommandBuilder()
   .setName("queue")
   .setDescription("Muestra la cola de reproducción")
-  .addIntegerOption((opt) => opt.setName("pagina").setDescription("Número de página").setMinValue(1).setRequired(false));
+  .setDescriptionLocalizations({
+    "en-US": "Show the playback queue",
+    "en-GB": "Show the playback queue",
+    "es-ES": "Muestra la cola de reproducción",
+    "es-419": "Muestra la cola de reproducción",
+  })
+  .addIntegerOption((opt) => opt.setName("pagina").setDescription("Número de página").setDescriptionLocalizations({
+    "en-US": "Page number",
+    "en-GB": "Page number",
+    "es-ES": "Número de página",
+    "es-419": "Número de página",
+  }).setMinValue(1).setRequired(false));
 
 module.exports = {
   data,

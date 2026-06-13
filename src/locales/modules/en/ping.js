@@ -2,7 +2,7 @@ module.exports = {
   ping: {
     title: "Bot Latency",
     field: {
-      latency: "Latency",
+      latency: "Bot Latency",
       uptime: "Uptime",
       guilds: "Servers",
       users: "Users",

@@ -10,7 +10,7 @@
  *  - Monitorear sesiones zombie de voz
  */
 
-const logger = require("../../../utils/structuredLogger");
+const logger = require("../../utils/structuredLogger");
 
 const log = {
   info: (msg, meta) => logger.info("Music.VOICEMON", msg, meta || {}),

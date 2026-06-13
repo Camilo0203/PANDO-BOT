@@ -487,7 +487,10 @@ async fetchPremiumFromAPI(guildId) {
     const tier = data?.tier || null;
 
     if (tier && !VALID_TIERS.includes(tier)) {
-      logger.warn('premiumService', 'Unknown premium tier received', { tier, expectedTiers: VALID_TIERS.join(', ') });
+      logger.warn('premiumService', `Unknown premium tier received: ${tier}`, {
+        tier,
+        expectedTiers: VALID_TIERS.join(', '),
+      });
     }
 
     return {

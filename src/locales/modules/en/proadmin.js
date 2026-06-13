@@ -5,7 +5,7 @@ module.exports = {
     available_codes_stat: "✅ Available",
     codes_label: "🎫 Codes",
     days: "{{days}} days",
-    dm_description: "Here is your exclusive PRO redemption code:\n\n**Code:** `{{code}}`\n**Duration:** {{duration}}\n\nUse this code in your server with `/pro redeem` to activate PRO features!",
+    dm_description: "Here is your exclusive PRO activation code:\n\n**Code:** `{{code}}`\n**Duration:** {{duration}}\n\nRun `/premium activate` in the server you own to activate PRO.",
     dm_failed: "❌ Failed",
     dm_footer: "TON618 - Premium Membership",
     dm_sent: "📨 DM Sent",
@@ -22,7 +22,7 @@ module.exports = {
     list_title: "📋 PRO Code Inventory",
     no_codes: "No available codes",
     none: "None",
-    redeem_instructions: "1. Go to your Discord server\n2. Run `/pro redeem`\n3. Enter your code: `{{code}}`",
+    redeem_instructions: "1. Go to the Discord server you own\n2. Run `/premium activate`\n3. Enter your code: `{{code}}`",
     redeemed_codes: "🎟️ Recently Redeemed ({{count}})",
     redeemed_codes_stat: "🎟️ Redeemed",
     slash: {

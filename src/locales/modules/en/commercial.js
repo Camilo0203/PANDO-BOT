@@ -11,13 +11,13 @@ module.exports = {
       supporter_expires: "Supporter expires: `{{date}}`"
     },
     pro_required: {
-      button_label: "Buy Pro | Support",
+      button_label: "Buy PRO",
       current_plan: "Current plan",
-      description: "**{{feature}}** is an exclusive feature of the Pro plan.\nIf you want to use this PRO feature, please go to our Support Discord and create a purchase ticket. You can also donate to support the project if you want!",
+      description: "**{{feature}}** is exclusive to the PRO plan.\nPurchase a plan securely from the official TON618 Tebex store, then activate the code with `/premium activate`.",
       footer: "TON618 Commercial Services",
       supporter: "Supporter",
       title: "Pro required",
-      upgrade_cta: "Join our Support Server to purchase a plan",
+      upgrade_cta: "Open the official TON618 Tebex store",
       upgrade_label: "🚀 Upgrade to Pro"
     },
     values: {

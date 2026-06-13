@@ -302,8 +302,8 @@ async function execute(ctx) {
       if (!commercialState.isPro) {
         embed.setColor(0xFEE75C);
         embed.setDescription(language === "es"
-          ? "⏱️ **SLA (Tiempo de Respuesta)** — Función PRO\n\nConfigura alertas automáticas cuando un ticket lleva demasiado tiempo sin respuesta.\n\n> 🔒 Disponible en el plan **PRO**. Usa `/pro redeem` para activarlo."
-          : "⏱️ **SLA (Response Time)** — PRO Feature\n\nSet automatic alerts when a ticket has been waiting too long for a response.\n\n> 🔒 Available on the **PRO** plan. Use `/pro redeem` to activate it.");
+          ? "⏱️ **SLA (Tiempo de Respuesta)** — Función PRO\n\nConfigura alertas automáticas cuando un ticket lleva demasiado tiempo sin respuesta.\n\n> 🔒 Disponible en el plan **PRO**. Usa `/premium activate` para activar tu código de Tebex."
+          : "⏱️ **SLA (Response Time)** — PRO Feature\n\nSet automatic alerts when a ticket has been waiting too long for a response.\n\n> 🔒 Available on the **PRO** plan. Use `/premium activate` to activate your Tebex code.");
         components.push(new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId("wiz_skip").setLabel(language === "es" ? "Continuar →" : "Continue →").setStyle(ButtonStyle.Secondary)
         ));
@@ -321,8 +321,8 @@ async function execute(ctx) {
       if (!commercialState.isPro) {
         embed.setColor(0xFEE75C);
         embed.setDescription(language === "es"
-          ? "🚨 **Escalado SLA** — Función PRO\n\nEscala automáticamente tickets que superan el tiempo límite configurado.\n\n> 🔒 Disponible en el plan **PRO**. Usa `/pro redeem` para activarlo."
-          : "🚨 **SLA Escalation** — PRO Feature\n\nAutomatically escalate tickets that exceed the configured time limit.\n\n> 🔒 Available on the **PRO** plan. Use `/pro redeem` to activate it.");
+          ? "🚨 **Escalado SLA** — Función PRO\n\nEscala automáticamente tickets que superan el tiempo límite configurado.\n\n> 🔒 Disponible en el plan **PRO**. Usa `/premium activate` para activar tu código de Tebex."
+          : "🚨 **SLA Escalation** — PRO Feature\n\nAutomatically escalate tickets that exceed the configured time limit.\n\n> 🔒 Available on the **PRO** plan. Use `/premium activate` to activate your Tebex code.");
         components.push(new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId("wiz_skip").setLabel(language === "es" ? "Continuar →" : "Continue →").setStyle(ButtonStyle.Secondary)
         ));

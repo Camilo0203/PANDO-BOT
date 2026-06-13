@@ -12,7 +12,13 @@ const log = { error: (msg, meta) => logger.error("Music.NOWPLAYING", msg, meta |
 
 const data = new SlashCommandBuilder()
   .setName("nowplaying")
-  .setDescription("Muestra la pista que se está reproduciendo ahora mismo");
+  .setDescription("Muestra la pista que se está reproduciendo ahora mismo")
+  .setDescriptionLocalizations({
+    "en-US": "Show the track currently playing",
+    "en-GB": "Show the track currently playing",
+    "es-ES": "Muestra la pista que se está reproduciendo ahora mismo",
+    "es-419": "Muestra la pista que se está reproduciendo ahora mismo",
+  });
 
 module.exports = {
   data,

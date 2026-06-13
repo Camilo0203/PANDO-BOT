@@ -7,6 +7,7 @@ const { EmbedBuilder } = require("discord.js");
 const { resolveCommercialState } = require("./commercial");
 const { resolveGuildLanguage, t } = require("./i18n");
 const { resolveGuildPremiumStatus } = require("./premiumStatus");
+const { getProStoreUrl } = require("./proStore");
 const logger = require("./structuredLogger");
 
 const REMINDER_DAYS = [7, 3, 1]; // Días antes de vencer para enviar recordatorio
@@ -218,7 +219,7 @@ async function getMembershipStatus(guildId) {
       supporterActive: false,
       supporterExpiresAt: null,
       ownerUserId: null,
-      upgradeUrl: process.env.PRO_UPGRADE_URL || null,
+      upgradeUrl: getProStoreUrl(),
       error: "premium_status_unavailable",
       meta: {
         source: "membership_status_error",

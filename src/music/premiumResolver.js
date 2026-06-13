@@ -19,9 +19,9 @@ const RESOLVER_OPTIONS = {
   supabaseUrl: process.env.SUPABASE_URL,
   botApiKey: process.env.BOT_API_KEY,
   logger: {
-    info: (msg, meta) => require("../../../utils/structuredLogger").info("Music.PREMIUM", msg, meta || {}),
-    warn: (msg, meta) => require("../../../utils/structuredLogger").warn("Music.PREMIUM", msg, meta || {}),
-    error: (msg, meta) => require("../../../utils/structuredLogger").error("Music.PREMIUM", msg, meta || {}),
+    info: (msg, meta) => require("../utils/structuredLogger").info("Music.PREMIUM", msg, meta || {}),
+    warn: (msg, meta) => require("../utils/structuredLogger").warn("Music.PREMIUM", msg, meta || {}),
+    error: (msg, meta) => require("../utils/structuredLogger").error("Music.PREMIUM", msg, meta || {}),
   },
 };
 

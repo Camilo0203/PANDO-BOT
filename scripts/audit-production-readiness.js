@@ -9,29 +9,53 @@ const { MESSAGES, t } = require("../src/utils/i18n");
 const { loadAndValidateCommands } = require("../src/utils/commandLoader");
 
 const EXPECTED_PUBLIC_COMMANDS = [
+  "analytics",
   "audit",
   "autorole",
   "config",
   "embed",
+  "filter",
   "giveaway",
+  "health",
   "help",
   "level",
+  "loop",
   "mod",
   "modlogs",
+  "nowplaying",
+  "pause",
+  "play",
   "poll",
   "premium",
+  "pro",
+  "proadmin",
   "profile",
+  "queue",
+  "quickstart",
+  "search",
   "serverstats",
   "setup",
+  "shuffle",
+  "skip",
   "staff",
   "stats",
+  "stop",
   "suggest",
   "ticket",
   "verify",
+  "volume",
   "warn",
 ];
 
-const EXPECTED_PRIVATE_COMMANDS = ["debug", "ping"];
+const EXPECTED_PRIVATE_COMMANDS = [
+  "debug",
+  "musicstatus",
+  "ping",
+  "resetall",
+  "resetguild",
+  "security",
+  "send-tutorial",
+];
 const ALLOWED_HELP_PSEUDO_TARGETS = new Set(["staffops"]);
 
 const CRITICAL_RUNTIME_KEYS = [

@@ -2,9 +2,11 @@
 
 const { EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle } = require("discord.js");
 
-const UPGRADE_URL = process.env.PRO_UPGRADE_URL || null;
 const { buildCommercialSettingsDefaults } = require("./database/commercialDefaults");
 const { t } = require("./i18n");
+const { getProStoreUrl } = require("./proStore");
+
+const UPGRADE_URL = getProStoreUrl();
 
 const COMMERCIAL_PLAN_KEYS = new Set(["free", "pro", "enterprise"]);
 const PLAN_WEIGHTS = {
@@ -209,13 +211,11 @@ function buildProRequiredEmbed(settingsRecord = {}, featureLabel = "This feature
       },
     );
 
-  if (UPGRADE_URL) {
-    embed.addFields({
-      name: t(language, "commercial.pro_required.upgrade_label"),
-      value: t(language, "commercial.pro_required.upgrade_cta"),
-      inline: false,
-    });
-  }
+  embed.addFields({
+    name: t(language, "commercial.pro_required.upgrade_label"),
+    value: t(language, "commercial.pro_required.upgrade_cta"),
+    inline: false,
+  });
 
   embed
     .setFooter({
@@ -227,7 +227,6 @@ function buildProRequiredEmbed(settingsRecord = {}, featureLabel = "This feature
 }
 
 function buildProUpgradeButton(language = "en") {
-  if (!UPGRADE_URL) return null;
   const button = new ButtonBuilder()
     .setLabel(t(language, "commercial.pro_required.button_label"))
     .setStyle(ButtonStyle.Link)

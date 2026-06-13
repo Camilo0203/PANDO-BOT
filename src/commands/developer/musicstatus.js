@@ -10,11 +10,17 @@ const log = { info: (msg, meta) => logger.info("Music.STATUS", msg, meta || {}) 
 
 const data = new SlashCommandBuilder()
   .setName("musicstatus")
-  .setDescription("Estado de los nodos Lavalink [Solo Owner]");
+  .setDescription("Estado de los nodos Lavalink [Solo Owner]")
+  .setDescriptionLocalizations({
+    "en-US": "Lavalink node status [Owner Only]",
+    "en-GB": "Lavalink node status [Owner Only]",
+    "es-ES": "Estado de los nodos Lavalink [Solo Owner]",
+    "es-419": "Estado de los nodos Lavalink [Solo Owner]",
+  });
 
 module.exports = {
   data,
-  meta: { scope: "developer", category: "music" },
+  meta: { scope: "developer", category: "music", privateOnly: true },
   category: "music",
   ownerOnly: true,
 
