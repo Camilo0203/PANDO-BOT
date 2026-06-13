@@ -12,7 +12,7 @@ module.exports = {
     open_tickets: "🟢 Tickets Abiertos",
     opened_today: "📅 Abiertos Hoy",
     title: "📊 Centro de Control y Estadísticas",
-    top_staff: "🏆 Top Staff",
+    top_staff: "🏆 Mejor staff",
     total_tickets: "📊 Total de Tickets",
     update_button: "Actualizar Panel"
   }

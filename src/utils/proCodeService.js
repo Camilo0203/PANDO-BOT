@@ -203,11 +203,81 @@ async function syncTebexEntitlement(redemption, expiresAt) {
   return { skipped: false };
 }
 
-async function revokeTebexEntitlement(guildId, reason = "tebex_revoked") {
+function buildTebexRevocationFilter(redemption, reason = "tebex_revoked") {
+  const subscriptionId = String(redemption?.provider_subscription_id || "").trim();
+  const orderId = String(redemption?.provider_order_id || "").trim();
+  const isSubscriptionEnd = String(reason).includes("recurring-payment.ended");
+
+  if (isSubscriptionEnd && subscriptionId) {
+    return `provider_subscription_id=eq.${encodeURIComponent(subscriptionId)}`;
+  }
+  if (orderId) {
+    return `provider_order_id=eq.${encodeURIComponent(orderId)}`;
+  }
+  if (subscriptionId) {
+    return `provider_subscription_id=eq.${encodeURIComponent(subscriptionId)}`;
+  }
+  return null;
+}
+
+function shouldRevokeCurrentTebexPlan(planSource, redemption, providerRowRevoked = false) {
+  const source = String(planSource || "").trim().toLowerCase();
+  const code = String(redemption?.code || "").trim().toLowerCase();
+
+  if (code && source === `redeem:${code}`) return true;
+  return providerRowRevoked && ["tebex", "supabase_tebex"].includes(source);
+}
+
+async function revokeTebexEntitlement(
+  guildId,
+  reason = "tebex_revoked",
+  redemption = null
+) {
   const now = new Date();
   const guildSettings = await settings.get(guildId);
+  const currentState = resolveCommercialState(guildSettings || {}, now);
+  const revocationFilter = buildTebexRevocationFilter(redemption, reason);
+  let providerRowRevoked = false;
 
-  if (guildSettings) {
+  if (!revocationFilter) {
+    logger.warn("proCodeService", "Skipped unscoped Tebex entitlement revocation", {
+      guildId,
+      reason,
+    });
+    return { success: false, skipped: true, reason: "missing_provider_reference" };
+  }
+
+  try {
+    const result = await supabaseRequest(
+      `guild_subscriptions?guild_id=eq.${encodeURIComponent(guildId)}&provider=eq.tebex&premium_enabled=eq.true&${revocationFilter}`,
+      {
+        method: "PATCH",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({
+          status: "expired",
+          premium_enabled: false,
+          ends_at: now.toISOString(),
+          cancelled_at: now.toISOString(),
+          updated_at: now.toISOString(),
+        }),
+      }
+    );
+    providerRowRevoked = Array.isArray(result.data) && result.data.length > 0;
+  } catch (error) {
+    logger.error("proCodeService", "Failed to revoke Tebex entitlement in Supabase", {
+      guildId,
+      error: error?.message || String(error),
+    });
+    throw error;
+  }
+
+  const revokeCurrentPlan = shouldRevokeCurrentTebexPlan(
+    currentState.planSource,
+    redemption,
+    providerRowRevoked
+  );
+
+  if (guildSettings && revokeCurrentPlan) {
     const patch = buildCommercialSettingsPatch(guildSettings, {
       plan: "free",
       plan_source: reason,
@@ -218,7 +288,7 @@ async function revokeTebexEntitlement(guildId, reason = "tebex_revoked") {
   }
 
   const db = getDB();
-  if (db) {
+  if (db && revokeCurrentPlan) {
     await db.collection("premium_cache").updateOne(
       { guild_id: guildId },
       {
@@ -239,30 +309,19 @@ async function revokeTebexEntitlement(guildId, reason = "tebex_revoked") {
     );
   }
 
-  try {
-    await supabaseRequest(
-      `guild_subscriptions?guild_id=eq.${encodeURIComponent(guildId)}&provider=eq.tebex&premium_enabled=eq.true`,
-      {
-        method: "PATCH",
-        headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({
-          status: "expired",
-          premium_enabled: false,
-          ends_at: now.toISOString(),
-          cancelled_at: now.toISOString(),
-          updated_at: now.toISOString(),
-        }),
-      }
-    );
-  } catch (error) {
-    logger.error("proCodeService", "Failed to revoke Tebex entitlement in Supabase", {
+  if (!revokeCurrentPlan) {
+    logger.info("proCodeService", "Tebex purchase revoked without replacing a newer guild plan", {
       guildId,
-      error: error?.message || String(error),
+      reason,
+      planSource: currentState.planSource,
     });
-    throw error;
   }
 
-  return { success: true };
+  return {
+    success: true,
+    currentPlanRevoked: revokeCurrentPlan,
+    providerRowRevoked,
+  };
 }
 
 /**
@@ -462,6 +521,8 @@ module.exports = {
   calculateExpiration,
   activateProInGuild,
   revokeTebexEntitlement,
+  buildTebexRevocationFilter,
+  shouldRevokeCurrentTebexPlan,
   syncTebexEntitlement,
   processRedemption,
   isGuildOwner,

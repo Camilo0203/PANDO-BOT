@@ -20,7 +20,7 @@ module.exports = {
     items: {
       background: {
         description: "Fondo personalizado para profile",
-        name: "🖼️ Background"
+        name: "🖼️ Fondo"
       },
       badge: {
         description: "Insignia en tu perfil",
@@ -28,11 +28,11 @@ module.exports = {
       },
       boost_daily: {
         description: "2x recompensas diarias por 7 días",
-        name: "💰 Daily Boost"
+        name: "💰 Mejora diaria"
       },
       boost_xp: {
         description: "2x XP por 1 día",
-        name: "⚡ XP Boost"
+        name: "⚡ Mejora de XP"
       },
       color: {
         description: "Color personalizado en embed",

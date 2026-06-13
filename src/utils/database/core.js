@@ -215,8 +215,26 @@ async function createIndexes() {
     await db.collection("pro_redeem_codes").createIndex({ redeemed: 1, created_at: -1 }, { background: true });
     await db.collection("pro_redeem_codes").createIndex({ created_by: 1 }, { background: true });
     await db.collection("pro_redeem_codes").createIndex({ expires_at: 1 }, { expireAfterSeconds: 0 , background: true });
+    await db.collection("pro_redeem_codes").createIndex(
+      { provider: 1, provider_effect_id: 1 },
+      {
+        unique: true,
+        background: true,
+        partialFilterExpression: { provider_effect_id: { $type: "string" } },
+      }
+    ).catch((err) => {
+      logger.warn('database.mongo', 'Failed to create PRO provider effect index', { error: err?.message });
+    });
     await db.collection("pro_redemptions").createIndex({ redeemed_by: 1, redeemed_at: -1 }, { background: true });
     await db.collection("pro_redemptions").createIndex({ redeemed_guild_id: 1 }, { background: true });
+    await db.collection("pro_redemptions").createIndex(
+      { provider: 1, provider_order_id: 1, redeemed_at: -1 },
+      { background: true }
+    );
+    await db.collection("pro_redemptions").createIndex(
+      { provider: 1, provider_subscription_id: 1, redeemed_at: -1 },
+      { background: true }
+    );
 
     // Indexes for webhook idempotency (TTL 90 days)
     await db.collection("webhook_events").createIndex({ payment_id: 1 }, { unique: true , background: true }).catch((err) => {

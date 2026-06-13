@@ -11,7 +11,7 @@ module.exports = {
       none: "Sin categorías configuradas",
       off: "APAGADO",
       on: "ENCENDIDO",
-      pings: "{{count}} pings"
+      pings: "{{count}} menciones"
     },
     common: {
       all_categories: "Todas las categorías",

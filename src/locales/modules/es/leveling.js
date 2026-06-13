@@ -39,13 +39,13 @@ module.exports = {
       },
       subcommands: {
         leaderboard: {
-          description: "View the server leaderboard"
+          description: "Ver la tabla de clasificación del servidor"
         },
         rank: {
-          description: "View your rank on the leaderboard"
+          description: "Ver tu posición en la tabla de clasificación"
         },
         view: {
-          description: "View your level or another user's level"
+          description: "Ver tu nivel o el nivel de otro usuario"
         }
       }
     },

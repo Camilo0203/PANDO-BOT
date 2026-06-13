@@ -20,7 +20,7 @@ module.exports = {
     },
     command: {
       account_age_pro: "Requisito de edad de cuenta mayor a {{max}} días",
-      actor: "Actor",
+      actor: "Responsable",
       anti_raid_disabled: "El anti-raid ahora está **desactivado**.",
       anti_raid_enabled: "El anti-raid ahora está **activado**.\nUmbral: **{{joins}} joins** en **{{seconds}}s**.\nAcción: **{{action}}**.",
       anti_raid_triggers: "Activaciones anti-raid",

@@ -4,7 +4,7 @@ module.exports = {
     all_permissions: "Todos los permisos presentes",
     checks: {
       database: "Base de Datos",
-      handlers: "Handlers",
+      handlers: "Controladores",
       memory: "Memoria",
       permissions: "Permisos del Bot",
       uptime: "Tiempo Activo",
@@ -22,7 +22,7 @@ module.exports = {
     errors: {
       database: "Error de conexión a base de datos: {{error}}"
     },
-    handlers_status: "Giveaways: {{giveaway}}, Stats: {{stats}}",
+    handlers_status: "Sorteos: {{giveaway}}, Estadísticas: {{stats}}",
     inactive: "Inactivo",
     memory_usage: "{{used}} MB / {{total}} MB",
     missing_count: "Faltan {{count}} permisos",

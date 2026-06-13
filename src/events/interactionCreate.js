@@ -15,6 +15,7 @@ const {
   clearGuildSettingsCache,
 } = require("../utils/accessControl");
 const { resolveInteractionLanguage, t } = require("../utils/i18n");
+const { t: musicT } = require("../music/i18n");
 const { toMs, logStructured, recordError, recordInteractionMetric } = require("../utils/observability");
 const { queueBotStatsSync } = require("../utils/botStatsSync");
 const { queueDashboardBridgeSync } = require("../utils/dashboardBridgeSync");
@@ -49,8 +50,9 @@ function getMusicInteractionHandler() {
 }
 
 async function respondMusicUnavailable(interaction) {
+  const language = resolveInteractionLanguage(interaction);
   const payload = {
-    content: "Music services are currently unavailable. Please try again later.",
+    content: musicT(language, "error_lavalink"),
     flags: 64,
   };
 

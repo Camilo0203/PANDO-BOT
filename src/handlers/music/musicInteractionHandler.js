@@ -12,6 +12,7 @@ const fs = require("fs");
 const path = require("path");
 const { Collection } = require("discord.js");
 const logger = require("../../utils/structuredLogger");
+const { t, normalizeLanguage } = require("../../music/i18n");
 
 const log = {
   info: (msg, meta) => logger.info("Music.INTHANDLER", msg, meta || {}),
@@ -75,10 +76,11 @@ async function musicInteractionHandler(interaction) {
   const command = commands.get(interaction.commandName);
   if (!command) return false;
   if (command.category !== "music") return false;
+  const language = normalizeLanguage(interaction.locale || interaction.guildLocale);
 
   if (ALLOWED_GUILD_IDS.size > 0 && !ALLOWED_GUILD_IDS.has(interaction.guildId)) {
     log.warn("Music command blocked outside allowed guild", { command: interaction.commandName, guildId: interaction.guildId, userId: interaction.user.id });
-    return safeReply(interaction, { content: "Music commands are only enabled in the support server.", ephemeral: true });
+    return safeReply(interaction, { content: t(language, "music.command_scope_only"), ephemeral: true });
   }
 
   const userKey = `${interaction.user.id}:${interaction.commandName}`;
@@ -86,10 +88,10 @@ async function musicInteractionHandler(interaction) {
 
   if (isOnCooldown(userCooldowns, userKey, COOLDOWN_MS)) {
     const remaining = Math.ceil((COOLDOWN_MS - (Date.now() - userCooldowns.get(userKey))) / 1000);
-    return safeReply(interaction, { content: `⏳ Please wait ${remaining}s before using this command again.`, ephemeral: true });
+    return safeReply(interaction, { content: t(language, "music.command_user_cooldown", { seconds: remaining }), ephemeral: true });
   }
   if (isOnCooldown(guildCooldowns, guildKey, GUILD_COOLDOWN_MS)) {
-    return safeReply(interaction, { content: "⏳ This server is processing a music command. Please wait a moment.", ephemeral: true });
+    return safeReply(interaction, { content: t(language, "music.command_guild_cooldown"), ephemeral: true });
   }
 
   userCooldowns.set(userKey, Date.now());
@@ -112,7 +114,7 @@ async function musicInteractionHandler(interaction) {
     log.info("Command executed", { ...context, durationMs: Date.now() - startTime });
   } catch (error) {
     log.error("Command execution failed", { ...context, error: error?.message || String(error), stack: error?.stack, durationMs: Date.now() - startTime });
-    const payload = { content: "❌ An error occurred while executing the music command. Please try again later.", ephemeral: true };
+    const payload = { content: t(language, "music.command_execution_error"), ephemeral: true };
     await safeReply(interaction, payload);
   }
 }

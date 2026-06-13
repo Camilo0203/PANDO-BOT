@@ -7,7 +7,7 @@ module.exports = {
       messages_today: "💬 Mensajes Hoy",
       growth_rate: "📈 Tasa de Crecimiento"
     },
-    footer: "TON618 Pro Analytics",
+    footer: "Analíticas PRO de TON618",
     error: "❌ Ocurrió un error al obtener las analíticas."
   }
 };

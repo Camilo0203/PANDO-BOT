@@ -22,7 +22,7 @@ module.exports = {
     critical_alerts_list: "🚨 Alertas Críticas",
     setting_up_indexes: "🔧 Configurando índices MongoDB...",
     indexes_label: "Índices",
-    scheduler_label: "Scheduler",
+    scheduler_label: "Planificador",
     setup_complete: "🔒 Configuración de Seguridad Completada",
     alert_acknowledged_title: "✅ Alerta Reconocida",
     alert_acknowledged_desc: "Alerta `{alertId}` ha sido reconocida.",

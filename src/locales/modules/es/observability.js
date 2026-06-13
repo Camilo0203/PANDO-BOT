@@ -2,7 +2,7 @@ module.exports = {
   observability: {
     interactions: "Interacciones",
     scope_errors: "Errores por scope",
-    top_error: "Top error",
+    top_error: "Error principal",
     window: "Ventana"
   }
 };

@@ -423,11 +423,18 @@ async function processRevokeEvent({ body, eventType, client, services = {} }) {
   const identity = extractDiscordIdentity(body, packages);
   const providerOrderId = getProviderOrderId(body);
   const providerSubscriptionId = getProviderSubscriptionId(body);
-  const lookup = {
-    provider: "tebex",
-    orderId: providerOrderId,
-    subscriptionId: providerSubscriptionId,
-  };
+  const isSubscriptionEnd = eventType === "recurring-payment.ended";
+  const lookup = isSubscriptionEnd
+    ? {
+        provider: "tebex",
+        subscriptionId: providerSubscriptionId,
+        orderId: providerSubscriptionId ? null : providerOrderId,
+      }
+    : {
+        provider: "tebex",
+        orderId: providerOrderId,
+        subscriptionId: providerOrderId ? null : providerSubscriptionId,
+      };
   const redemption = await findProviderRedemption(lookup);
 
   await revokeCodes({
@@ -436,7 +443,11 @@ async function processRevokeEvent({ body, eventType, client, services = {} }) {
   });
 
   if (redemption?.redeemed_guild_id) {
-    await revokeEntitlement(redemption.redeemed_guild_id, `tebex:${eventType}`);
+    await revokeEntitlement(
+      redemption.redeemed_guild_id,
+      `tebex:${eventType}`,
+      redemption
+    );
   } else {
     logger.warn("tebex", "No redeemed guild found for revocation event", {
       eventType,

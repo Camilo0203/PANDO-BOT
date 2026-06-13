@@ -231,7 +231,7 @@ module.exports = {
     },
     panel: {
       description: "You need to verify before accessing the server. Click the button below to begin.",
-      footer: "{{guild}} â€¢ Verification",
+      footer: "{{guild}} • Verification",
       help_label: "Help",
       start_label: "Verify me",
       title: "Verification"

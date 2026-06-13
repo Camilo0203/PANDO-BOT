@@ -40,8 +40,8 @@ module.exports = {
         }
       }
     },
-    staff_no_data_description: "No statistics found for <@{{userId}}>.",
-    staff_no_data_title: "No Staff Data"
+    staff_no_data_description: "No se encontraron estadísticas para <@{{userId}}>.",
+    staff_no_data_title: "Sin datos del staff"
   },
   "staff.away_off": "Estado de ausencia eliminado. Ya vuelves a estar activo.",
   "staff.away_on_description": "Ahora apareces como ausente.{{reasonText}}",

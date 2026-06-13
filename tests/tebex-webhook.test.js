@@ -346,11 +346,14 @@ test("refund revokes pending codes and the redeemed guild entitlement", async ()
     client: {},
     services: {
       findRedemptionByProvider: async () => ({
+        code: "REFU-NDED-CODE",
         redeemed_by: "123456789012345678",
         redeemed_guild_id: "223456789012345678",
       }),
       revokeProviderCodes: async (lookup) => calls.push(["codes", lookup]),
-      revokeTebexEntitlement: async (guildId, reason) => calls.push(["entitlement", guildId, reason]),
+      revokeTebexEntitlement: async (guildId, reason, redemption) => {
+        calls.push(["entitlement", guildId, reason, redemption.code]);
+      },
       sendDirectMessage: async (_client, userId) => {
         calls.push(["dm", userId]);
         return true;
@@ -363,6 +366,48 @@ test("refund revokes pending codes and the redeemed guild entitlement", async ()
     "entitlement",
     "223456789012345678",
     "tebex:payment.refunded",
+    "REFU-NDED-CODE",
   ]);
   assert.deepEqual(calls[2], ["dm", "123456789012345678"]);
+  assert.equal(calls[0][1].orderId, "txn-refund");
+  assert.equal(calls[0][1].subscriptionId, null);
+});
+
+test("recurring-payment.ended revokes by subscription reference", async () => {
+  const lookups = [];
+  const body = {
+    id: "evt-ended",
+    type: "recurring-payment.ended",
+    subject: {
+      reference: "tbx-rec-ended",
+      last_payment: {
+        transaction_id: "txn-last",
+        products: [{ id: 7434172 }],
+      },
+    },
+  };
+
+  await processRevokeEvent({
+    body,
+    eventType: body.type,
+    client: {},
+    services: {
+      findRedemptionByProvider: async (lookup) => {
+        lookups.push(["find", lookup]);
+        return {
+          code: "ENDD-2345-6789",
+          redeemed_by: "123456789012345678",
+          redeemed_guild_id: "223456789012345678",
+          provider_subscription_id: "tbx-rec-ended",
+        };
+      },
+      revokeProviderCodes: async (lookup) => lookups.push(["codes", lookup]),
+      revokeTebexEntitlement: async () => ({ success: true }),
+      sendDirectMessage: async () => true,
+    },
+  });
+
+  assert.equal(lookups[0][1].subscriptionId, "tbx-rec-ended");
+  assert.equal(lookups[0][1].orderId, null);
+  assert.equal(lookups[1][1].subscriptionId, "tbx-rec-ended");
 });

@@ -512,7 +512,7 @@ module.exports = {
           "choices": {
             "mode_least_active": "Menos activo",
             "mode_random": "Aleatorio",
-            "mode_round_robin": "Round robin",
+            "mode_round_robin": "Rotativo",
             "sla_escalation": "Escalada",
             "sla_warning": "Advertencia",
             "style_buttons": "Botones",
@@ -682,7 +682,7 @@ module.exports = {
       "auto_assignment_description": "Configurar comportamiento de asignación automática",
       "choice_mode_least_active": "Menos activo",
       "choice_mode_random": "Aleatorio",
-      "choice_mode_round_robin": "Round robin",
+      "choice_mode_round_robin": "Rotativo",
       "choice_sla_escalation": "Escalado",
       "choice_sla_warning": "Advertencia",
       "choice_style_buttons": "Botones",

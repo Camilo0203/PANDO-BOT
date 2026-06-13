@@ -302,6 +302,10 @@ test("router confirma el boton y responde ephemeral si la precarga music falla",
     assert.equal(interaction.__calls.deferUpdate, 1);
     assert.equal(interaction.__calls.followUp.length, 1);
     assert.equal(interaction.__calls.followUp[0].flags, 64);
+    assert.match(
+      interaction.__calls.followUp[0].content,
+      /servicio de música no está disponible temporalmente/i
+    );
     assert.equal(interaction.__calls.reply.length, 0);
   } finally {
     interactionEvent.__test.setMusicInteractionModule(originalModule);

@@ -8,9 +8,9 @@ module.exports = {
       peak_hour_value: "**{{hour}}:00 - {{hourEnd}}:00** con {{messages}} mensajes",
       title: "📊 Estadísticas de Actividad - {{period}}",
       top_channels: "🔥 Top Canales",
-      top_channels_value: "{{num}}. <#{{channelId}}> - {{count}} msgs",
+      top_channels_value: "{{num}}. <#{{channelId}}> - {{count}} mensajes",
       top_users: "⭐ Usuarios Más Activos",
-      top_users_value: "{{num}}. <@{{userId}}> - {{count}} msgs"
+      top_users_value: "{{num}}. <@{{userId}}> - {{count}} mensajes"
     },
     channels: {
       channel_entry: "**{{num}}.** <#{{channelId}}>\n└ {{count}} mensajes",
@@ -40,7 +40,7 @@ module.exports = {
       "30day_value": "**Cambio Total:** {{change}}\n**Porcentaje:** {{percent}}%\n**Inicio:** {{start}}\n**Actual:** {{current}}",
       footer: "Basado en los últimos 30 días de datos",
       stats_30d: "📊 30 Días Crecimiento",
-      stats_30d_value: "**Total Change:** {{change}}\n**Percentage:** {{percent}}%\n**Start:** {{start}}\n**Current:** {{current}}",
+      stats_30d_value: "**Cambio total:** {{change}}\n**Porcentaje:** {{percent}}%\n**Inicio:** {{start}}\n**Actual:** {{current}}",
       title: "📈 Estadísticas de Crecimiento del Servidor",
       trend: "📅 Tendencia Reciente",
       trend_value: "**Crecimiento Diario Prom:** {{avgDaily}}\n**Proyectado (30d):** {{projected}}"
@@ -48,7 +48,7 @@ module.exports = {
     members: {
       current: "📈 Estadísticas Actuales",
       current_stats: "📈 Estadísticas Actuales",
-      current_stats_value: "**Total Members:** {{total}}\n**Humans:** {{humans}}\n**Bots:** {{bots}}",
+      current_stats_value: "**Miembros totales:** {{total}}\n**Personas:** {{humans}}\n**Bots:** {{bots}}",
       current_value: "**Total de Miembros:** {{total}}\n**Humanos:** {{humans}}\n**Bots:** {{bots}}",
       footer: "Período: {{period}}",
       growth: "📊 Crecimiento",
@@ -90,7 +90,7 @@ module.exports = {
     roles: {
       entry: "**{{index}}.** {{role}}\n└ {{count}} miembros ({{percent}}%)",
       footer: "Total de roles: {{total}} | Mostrando top 15",
-      role_entry: "**{{num}}.** {{role}}\n└ {{count}} members ({{percent}}%)",
+      role_entry: "**{{num}}.** {{role}}\n└ {{count}} miembros ({{percent}}%)",
       title: "🎭 Distribución de Roles"
     },
     slash: {
