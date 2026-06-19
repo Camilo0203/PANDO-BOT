@@ -5,6 +5,7 @@ const assert = require("node:assert/strict");
 const crypto = require("node:crypto");
 
 const {
+  createTebexApp,
   verifyTebexSignature,
   getPaymentPayload,
   extractPackages,
@@ -23,6 +24,29 @@ function signTebexBody(rawBody, secret) {
   return crypto.createHmac("sha256", secret).update(bodyHash).digest("hex");
 }
 
+async function withTebexServer(secret, callback) {
+  const previousSecret = process.env.TEBEX_SECRET_KEY;
+  process.env.TEBEX_SECRET_KEY = secret;
+
+  const server = createTebexApp({ getClient: () => null }).listen(0, "127.0.0.1");
+  await new Promise((resolve, reject) => {
+    server.once("listening", resolve);
+    server.once("error", reject);
+  });
+
+  try {
+    const { port } = server.address();
+    await callback(`http://127.0.0.1:${port}`);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    if (previousSecret === undefined) {
+      delete process.env.TEBEX_SECRET_KEY;
+    } else {
+      process.env.TEBEX_SECRET_KEY = previousSecret;
+    }
+  }
+}
+
 test("validates the official Tebex SHA256 plus HMAC signature", () => {
   const secret = "test-secret";
   const rawBody = Buffer.from(JSON.stringify({ id: "evt-1", type: "payment.completed" }));
@@ -30,6 +54,49 @@ test("validates the official Tebex SHA256 plus HMAC signature", () => {
 
   assert.equal(verifyTebexSignature(rawBody, signature, secret), true);
   assert.equal(verifyTebexSignature(rawBody, "0".repeat(64), secret), false);
+});
+
+test("accepts Tebex validation over HTTP with the untouched raw body", async () => {
+  const secret = "test-http-secret";
+  const rawBody = Buffer.from(JSON.stringify({
+    id: "validation-id",
+    type: "validation.webhook",
+  }));
+
+  await withTebexServer(secret, async (url) => {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-signature": signTebexBody(rawBody, secret),
+      },
+      body: rawBody,
+    });
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { id: "validation-id" });
+  });
+});
+
+test("rejects an invalid Tebex signature over HTTP", async () => {
+  const rawBody = Buffer.from(JSON.stringify({
+    id: "invalid-signature-id",
+    type: "validation.webhook",
+  }));
+
+  await withTebexServer("test-http-secret", async (url) => {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-signature": "0".repeat(64),
+      },
+      body: rawBody,
+    });
+
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), { error: "invalid_signature" });
+  });
 });
 
 test("rejects the legacy direct-body HMAC format", () => {
@@ -280,8 +347,8 @@ test("renews an already activated guild through the normal redemption service", 
   ]);
 });
 
-test("revokes the code and returns a retryable failure when purchase DM delivery fails", async () => {
-  const revoked = [];
+test("keeps the idempotent code available for retry when purchase DM delivery fails", async () => {
+  const created = [];
   const marked = [];
   const body = {
     id: "evt-dm-failure",
@@ -310,17 +377,64 @@ test("revokes the code and returns a retryable failure when purchase DM delivery
         findAvailableCodeByProviderEffect: async () => null,
         findRedemptionByProvider: async () => null,
         generateCode: () => "FAIL-2345-6789",
-        createCode: async (record) => record,
+        createCode: async (record) => {
+          created.push(record);
+          return record;
+        },
         sendDirectMessage: async () => false,
-        revokeProviderCodes: async (lookup) => revoked.push(lookup),
       },
     }),
     /Could not deliver/
   );
 
-  assert.equal(revoked.length, 1);
-  assert.equal(revoked[0].orderId, "txn-dm-failure");
+  assert.equal(created.length, 1);
+  assert.equal(created[0].provider_effect_id, "txn-dm-failure:7434172:0");
   assert.equal(marked.at(-1)[1], "failed");
+});
+
+test("reuses the pending code on a delivery retry instead of creating a duplicate", async () => {
+  let createCalls = 0;
+  const delivered = [];
+  const body = {
+    id: "evt-dm-retry",
+    type: "payment.completed",
+    subject: {
+      transaction_id: "txn-dm-retry",
+      customer: {
+        username: {
+          id: "123456789012345678",
+          username: "buyer",
+        },
+      },
+      products: [{ id: 7434172 }],
+    },
+  };
+
+  await processGrantEvent({
+    body,
+    eventType: body.type,
+    eventId: body.id,
+    client: {},
+    services: {
+      claimEvent: async () => true,
+      markEvent: async () => {},
+      findAvailableCodeByProviderEffect: async () => ({
+        code: "RETR-Y234-5678",
+        redeemed: false,
+      }),
+      findRedemptionByProvider: async () => null,
+      createCode: async () => {
+        createCalls += 1;
+      },
+      sendDirectMessage: async (_client, userId) => {
+        delivered.push(userId);
+        return true;
+      },
+    },
+  });
+
+  assert.equal(createCalls, 0);
+  assert.deepEqual(delivered, ["123456789012345678"]);
 });
 
 test("refund revokes pending codes and the redeemed guild entitlement", async () => {

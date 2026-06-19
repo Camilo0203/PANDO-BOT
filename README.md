@@ -10,12 +10,12 @@ TON618 supports **English + Español** today. When the bot joins a server, it pr
 
 - `Free`: core ticketing, transcripts, categories, panel setup, audit basics, rating, and case context.
 - `Pro`: advanced operations like SLA tuning, SLA rules, auto-assignment, incident mode, daily reports, `/stats sla`, and live playbooks.
-  - `pro_monthly`: $9.99/month
-  - `pro_yearly`: $99.99/year
-  - `lifetime`: $299.99 one-time
+  - `pro_monthly`: monthly subscription
+  - `pro_yearly`: yearly subscription
+  - `lifetime`: one-time permanent access
 - `Supporter`: recognition only. Donations never unlock premium features.
 
-Billing source of truth lives in Supabase with Whop as payment provider. The bot queries premium status via `billing-guild-status` Edge Function using `BOT_API_KEY` authentication. Premium status is cached locally for 5 minutes with stale cache fallback (1 hour) for resilience. `/debug entitlements` remains available for support overrides and manual recovery flows.
+Tebex is the only public payment provider. The bot validates signed Tebex webhooks, creates an idempotent one-time activation code, sends it by Discord DM, and activates PRO for the selected server through `/premium activate`. MongoDB stores the activation workflow and Supabase receives the resulting Tebex entitlement projection for the dashboard. `/debug entitlements` remains available for verified support recovery and manual overrides.
 
 ## What makes TON618 different
 

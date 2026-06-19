@@ -12,6 +12,7 @@
  * @property {string|null} expires_at - ISO timestamp when premium expires (null for lifetime)
  * @property {boolean} lifetime - Whether this is a lifetime subscription
  * @property {string} [owner_user_id] - Discord user ID of subscription owner
+ * @property {string|null} [plan_source] - Effective entitlement source
  */
 const logger = require('../utils/structuredLogger');
 
@@ -23,6 +24,7 @@ const { CircuitBreaker, CircuitBreakerOpenError } = require('../utils/circuitBre
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const BOT_API_KEY = process.env.BOT_API_KEY;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const CACHE_TTL_MS = parseInt(process.env.PREMIUM_CACHE_TTL_MS, 10) || (5 * 60 * 1000); // 5 minutes
 const STALE_CACHE_FALLBACK_MS = parseInt(process.env.PREMIUM_STALE_CACHE_MS, 10) || (60 * 60 * 1000); // 1 hour
 const API_TIMEOUT_MS = parseInt(process.env.PREMIUM_API_TIMEOUT_MS, 10) || 8000; // 8 seconds
@@ -34,6 +36,44 @@ const billingBreaker = new CircuitBreaker('billing-api', {
   timeoutMs: parseInt(process.env.BILLING_CB_TIMEOUT_MS, 10) || 30000,
   successThreshold: parseInt(process.env.BILLING_CB_SUCCESS_THRESHOLD, 10) || 2,
 });
+
+function mapEffectiveEntitlementRow(row) {
+  const effectivePlan = String(row?.effective_plan || 'free').trim().toLowerCase();
+  const planSource = String(row?.plan_source || 'free').trim().toLowerCase() || 'free';
+  const billingInterval = String(row?.billing_interval || '').trim().toLowerCase();
+  const expiresAt = row?.plan_expires_at || row?.current_period_end || null;
+  const hasPremium = effectivePlan === 'pro' || effectivePlan === 'enterprise';
+
+  let tier = null;
+  if (hasPremium) {
+    if (effectivePlan === 'enterprise') {
+      tier = 'lifetime';
+    } else if (billingInterval === 'month') {
+      tier = 'pro_monthly';
+    } else if (billingInterval === 'year') {
+      tier = 'pro_yearly';
+    } else if (planSource === 'tebex' && !expiresAt) {
+      tier = 'lifetime';
+    } else {
+      tier = 'pro_yearly';
+    }
+  }
+
+  return {
+    has_premium: hasPremium,
+    tier,
+    expires_at: expiresAt,
+    lifetime: tier === 'lifetime',
+    owner_user_id: null,
+    plan_source: planSource,
+    _meta: {
+      source: 'effective_view',
+      stale: false,
+      unavailable: false,
+      errorCode: null,
+    },
+  };
+}
 
 class PremiumService {
   constructor() {
@@ -134,6 +174,7 @@ class PremiumService {
             expires_at: premiumData.expires_at,
             lifetime: premiumData.lifetime,
             owner_user_id: premiumData.owner_user_id,
+            plan_source: premiumData.plan_source || null,
             app_cache_expires_at: appCacheExpiresAt,
             ttl_expires_at: ttlExpiresAt,
             cached_at: now,
@@ -178,6 +219,7 @@ class PremiumService {
           expires_at: cached.expires_at,
           lifetime: cached.lifetime,
           owner_user_id: cached.owner_user_id,
+          plan_source: cached.plan_source || null,
           _meta: {
             source: 'cache',
             stale: false,
@@ -194,8 +236,8 @@ class PremiumService {
   }
 
 async fetchPremiumFromAPI(guildId) {
-    if (!SUPABASE_URL || !BOT_API_KEY) {
-      logger.warn('premium.config', 'SUPABASE_URL or BOT_API_KEY not configured. Premium features disabled.');
+    if (!SUPABASE_URL || (!SUPABASE_SERVICE_ROLE_KEY && !BOT_API_KEY)) {
+      logger.warn('premium.config', 'Supabase entitlement credentials are not configured. Premium features disabled.');
       return this.getDefaultPremiumStatus({
         source: 'config_missing',
         unavailable: true,
@@ -208,6 +250,45 @@ async fetchPremiumFromAPI(guildId) {
       
       for (let attempt = 1; attempt <= API_MAX_RETRIES; attempt++) {
         try {
+          if (SUPABASE_SERVICE_ROLE_KEY) {
+            try {
+              const response = await axios.get(
+                `${SUPABASE_URL}/rest/v1/guild_effective_entitlements`,
+                {
+                  headers: {
+                    apikey: SUPABASE_SERVICE_ROLE_KEY,
+                    Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                  },
+                  params: {
+                    guild_id: `eq.${guildId}`,
+                    select: 'guild_id,effective_plan,plan_source,plan_expires_at,current_period_end,subscription_status,billing_interval,cancel_at_period_end',
+                    limit: 1,
+                  },
+                  timeout: API_TIMEOUT_MS,
+                  validateStatus: (status) => status === 200 || status === 206,
+                }
+              );
+
+              if (!Array.isArray(response.data)) {
+                throw new Error('Invalid entitlement view response');
+              }
+
+              return this._normalizePremiumData(
+                mapEffectiveEntitlementRow(response.data[0] || null)
+              );
+            } catch (viewError) {
+              logger.warn('premium.api', 'Effective entitlement view failed; using Edge Function fallback', {
+                guildId,
+                httpStatus: viewError?.response?.status || null,
+                errorCode: viewError?.code || null,
+              });
+            }
+          }
+
+          if (!BOT_API_KEY) {
+            throw new Error('BOT_API_KEY is unavailable for the entitlement API fallback');
+          }
+
           const url = `${SUPABASE_URL}/functions/v1/billing-guild-status/${guildId}`;
           
           if (attempt === 1) {
@@ -235,6 +316,7 @@ async fetchPremiumFromAPI(guildId) {
             expires_at: response.data.expires_at || response.data.ends_at,
             lifetime: response.data.lifetime,
             owner_user_id: response.data.owner_user_id,
+            plan_source: response.data.plan_source || null,
             _meta: {
               source: 'api',
               stale: false,
@@ -307,6 +389,7 @@ async fetchPremiumFromAPI(guildId) {
       expires_at: null,
       lifetime: false,
       owner_user_id: null,
+      plan_source: null,
       _meta: {
         source: meta.source || 'default',
         stale: Boolean(meta.stale),
@@ -344,6 +427,7 @@ async fetchPremiumFromAPI(guildId) {
           expires_at: staleCache.expires_at,
           lifetime: staleCache.lifetime,
           owner_user_id: staleCache.owner_user_id,
+          plan_source: staleCache.plan_source || null,
           _meta: {
             source: 'cache_stale',
             stale: true,
@@ -499,6 +583,7 @@ async fetchPremiumFromAPI(guildId) {
       expires_at: data?.expires_at || null,
       lifetime: Boolean(data?.lifetime),
       owner_user_id: data?.owner_user_id || null,
+      plan_source: data?.plan_source || null,
       _meta: {
         source: data?._meta?.source || 'normalized',
         stale: Boolean(data?._meta?.stale),
@@ -514,4 +599,5 @@ const premiumService = new PremiumService();
 module.exports = {
   premiumService,
   PremiumService,
+  mapEffectiveEntitlementRow,
 };

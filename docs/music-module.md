@@ -81,7 +81,7 @@ Lee automáticamente del `.env` del bot:
 | `GUILD_COMMAND_COOLDOWN_MS` | 800 | Cooldown por guild |
 | `MUSIC_ALLOWED_GUILD_IDS` | (vacío = todos) | Whitelist de guilds |
 | `MUSIC_FORCE_TIER` | (vacío = dinámico) | Forzar tier: `free` o `pro` |
-| `PRO_UPGRADE_URL` | https://ton618.app/pricing | URL de upgrade |
+| `TEBEX_STORE_URL` | https://store.ton618bot.xyz/ | Tienda oficial para mejorar a PRO |
 
 ## VPS / PM2
 

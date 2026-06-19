@@ -28,6 +28,8 @@ Cloudflare Tunnel (systemd)
    +----> ton618-web    127.0.0.1:3000 (PM2)
    |
    +----> ton618-status 127.0.0.1:3001 (PM2)
+   |
+   +----> /webhook-tebex 127.0.0.1:8080 (solo ruta Tebex)
 ```
 
 ### Responsabilidades
@@ -65,12 +67,25 @@ Puertos internos esperados:
 
 | Servicio | Direccion |
 | --- | --- |
+| Bot health | `127.0.0.1:8080` |
 | Web | `127.0.0.1:3000` |
 | Status | `127.0.0.1:3001` |
 | Lavalink | `127.0.0.1:2333` |
 
 Los puertos son internos. Cloudflare Tunnel publica web y status sin exponer
 directamente estos servicios.
+
+El webhook comercial requiere un ingreso publico independiente del frontend:
+
+```text
+https://bot.ton618bot.xyz/webhook-tebex
+```
+
+Cloudflare debe enrutar unicamente `^/webhook-tebex(/.*)?$` de ese hostname a
+`http://127.0.0.1:8080`. No publiques el puerto completo ni uses el hostname
+de la web, porque `www.ton618bot.xyz` termina en `ton618-web`. La comprobacion
+segura es `GET /webhook-tebex/health`; los eventos reales llegan por `POST
+/webhook-tebex`.
 
 ## Preflight
 
@@ -171,13 +186,21 @@ git fetch origin
 git log --oneline HEAD..origin/main
 git merge --ff-only origin/main
 
+npm test
 npm run build
 pm2 restart ton618-status
 curl -fsS http://127.0.0.1:3001/ -o /dev/null
+curl -fsS http://127.0.0.1:3001/api/bot-health
 pm2 logs ton618-status --lines 100 --nostream
 ```
 
 Si cambia el lockfile, ejecutar `npm ci` antes del build.
+
+`ton618-status` consulta la salud del bot y MongoDB mediante una peticion
+privada dentro del VPS. Definir `BOT_INTERNAL_HEALTH_URL` en el proceso de
+status con el endpoint local del bot, normalmente
+`http://127.0.0.1:8080/health`. No apuntar esta variable a una URL publica
+protegida por Cloudflare.
 
 ### Solo documentacion
 
@@ -205,8 +228,22 @@ pm2 logs ton618-status --lines 100 --nostream
 ```bash
 curl -fsS http://127.0.0.1:3000/ -o /dev/null -w 'web: %{http_code}\n'
 curl -fsS http://127.0.0.1:3001/ -o /dev/null -w 'status: %{http_code}\n'
+curl -fsS http://127.0.0.1:3001/api/bot-health
 ss -ltnp | grep -E ':2333|:3000|:3001'
 ```
+
+### Tebex
+
+```bash
+curl -fsS https://bot.ton618bot.xyz/webhook-tebex/health
+curl -sS -o /dev/null -w '%{http_code}\n' \
+  -X POST -H 'Content-Type: application/json' -d '{}' \
+  https://bot.ton618bot.xyz/webhook-tebex
+```
+
+La primera llamada debe responder JSON. La segunda debe devolver `401` por
+firma ausente o invalida; un `404`, HTML o challenge de Cloudflare significa
+que Tebex no esta alcanzando el bot.
 
 ### Lavalink
 

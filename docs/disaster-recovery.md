@@ -22,7 +22,7 @@
 3. Verify environment variables are loaded
 4. Check MongoDB connection: `npm run smoke:health`
 5. Restart bot: `npm start` or `pm2 restart ton618-bot`
-6. Verify fingerprint matches expected: `curl https://bot.ton618.app/health`
+6. Verify fingerprint matches expected: `curl "$BOT_HEALTHCHECK_URL"`
 
 **Rollback Trigger:**
 - If bot doesn't start after 3 restart attempts
@@ -280,7 +280,7 @@ After any incident:
 
 ```bash
 # Check bot health
-curl https://bot.ton618.app/health | jq
+curl "$BOT_HEALTHCHECK_URL" | jq
 
 # View recent errors
 tail -100 data/logs/errors_$(date +%Y-%m-%d).jsonl
@@ -298,7 +298,7 @@ mongosh "MONGO_URI" --eval "db.adminCommand('ping')"
 npm run deploy:safe:compact
 
 # Run smoke tests
-npm run smoke:health https://bot.ton618.app/health
+npm run smoke:health "$BOT_HEALTHCHECK_URL"
 
 # View build fingerprint
 npm run build:fingerprint

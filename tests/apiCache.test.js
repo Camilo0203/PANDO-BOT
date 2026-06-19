@@ -48,7 +48,7 @@ test("apiCache invalida entradas individuales y por guild", () => {
 
 test("apiCache limpia entradas expiradas", async () => {
   set("members", "guild-1", "expired", { id: "1" }, 1);
-  set("members", "guild-1", "fresh", { id: "2" }, 50);
+  set("members", "guild-1", "fresh", { id: "2" }, 10_000);
 
   await new Promise((resolve) => setTimeout(resolve, 10));
 

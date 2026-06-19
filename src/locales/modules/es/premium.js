@@ -134,7 +134,7 @@ module.exports = {
       free_description: "Tu servidor está actualmente en el **Plan Gratis**.\n\n¡Mejora para desbloquear funciones premium!",
       free_limits: "🆓 Límites del Plan Gratis",
       field_free_upgrade: "💎 Mejorar a Pro",
-      field_free_upgrade_value: "[Visita nuestra página de precios]({{url}})",
+      field_free_upgrade_value: "[Visita la tienda oficial de TON618]({{url}})",
       limit_custom_commands: "• Comandos personalizados: **{{limit}}**",
       limit_auto_roles: "• Roles automáticos: **{{limit}}**",
       limit_welcome_messages: "• Mensajes de bienvenida: **{{limit}}**",

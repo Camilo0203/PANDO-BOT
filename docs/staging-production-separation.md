@@ -13,7 +13,7 @@
 2. `npm test`
 3. `npm run build:fingerprint`
 4. deploy de comandos en staging
-5. `npm run smoke:health https://staging-bot.ton618.app/health`
+5. `npm run smoke:health "$BOT_HEALTHCHECK_URL"`
 6. validar bridge, inbox y playbooks con un servidor de prueba
 
 ## Checklist de produccion
@@ -22,7 +22,7 @@
 2. `npm test`
 3. `npm run deploy:safe:compact`
 4. reiniciar el proceso del bot
-5. `npm run smoke:health https://bot.ton618.app/health`
+5. `npm run smoke:health "$BOT_HEALTHCHECK_URL"`
 6. verificar fingerprint nuevo en `/health`
 
 ## No mezclar nunca

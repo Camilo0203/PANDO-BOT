@@ -44,7 +44,7 @@ const BRAND = {
   SHORT_NAME: "TON618",
   TAGLINE: "Discord Management Suite",
   VERSION: "3.0 BETA",
-  WEBSITE: "https://ton618.app",
+  WEBSITE: "https://www.ton618bot.xyz",
   SUPPORT_URL: "https://discord.gg/ton618",
 
   // Default footer text

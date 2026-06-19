@@ -21,6 +21,35 @@ const DURATION_PRESETS = {
   "lifetime": null, // Sin expiración
 };
 
+const DEFAULT_PREMIUM_CACHE_TTL_MS = 5 * 60 * 1000;
+const DEFAULT_PREMIUM_STALE_CACHE_MS = 60 * 60 * 1000;
+
+function readPositiveDuration(value, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function buildPremiumCacheWindow(nowInput = new Date(), env = process.env) {
+  const candidate = nowInput instanceof Date ? nowInput : new Date(nowInput);
+  const now = Number.isNaN(candidate.getTime()) ? new Date() : candidate;
+  const freshTtlMs = readPositiveDuration(
+    env?.PREMIUM_CACHE_TTL_MS,
+    DEFAULT_PREMIUM_CACHE_TTL_MS
+  );
+  const staleTtlMs = Math.max(
+    readPositiveDuration(
+      env?.PREMIUM_STALE_CACHE_MS,
+      DEFAULT_PREMIUM_STALE_CACHE_MS
+    ),
+    freshTtlMs
+  );
+
+  return {
+    appCacheExpiresAt: new Date(now.getTime() + freshTtlMs),
+    ttlExpiresAt: new Date(now.getTime() + staleTtlMs),
+  };
+}
+
 /**
  * Genera un código aleatorio de canje
  * @param {number} length - Longitud del código (default: 12)
@@ -289,6 +318,7 @@ async function revokeTebexEntitlement(
 
   const db = getDB();
   if (db && revokeCurrentPlan) {
+    const cacheWindow = buildPremiumCacheWindow(now);
     await db.collection("premium_cache").updateOne(
       { guild_id: guildId },
       {
@@ -299,8 +329,8 @@ async function revokeTebexEntitlement(
           expires_at: now.toISOString(),
           revoked_at: now,
           revoke_reason: reason,
-          app_cache_expires_at: new Date(now.getTime() + 60 * 60 * 1000),
-          ttl_expires_at: new Date(now.getTime() + 60 * 60 * 1000),
+          app_cache_expires_at: cacheWindow.appCacheExpiresAt,
+          ttl_expires_at: cacheWindow.ttlExpiresAt,
           cached_at: now,
           source: "tebex_revocation",
         },
@@ -396,6 +426,7 @@ async function activateProInGuild(redemption) {
       if (db) {
         const tier = durationDays === null ? "lifetime" : durationDays <= 31 ? "pro_monthly" : "pro_yearly";
         const cacheNow = new Date();
+        const cacheWindow = buildPremiumCacheWindow(cacheNow);
         await db.collection("premium_cache").updateOne(
           { guild_id: guildId },
           {
@@ -406,12 +437,9 @@ async function activateProInGuild(redemption) {
               lifetime: durationDays === null,
               expires_at: newExpiresAt ? newExpiresAt.toISOString() : null,
               owner_user_id: redemption.redeemed_by || null,
-              app_cache_expires_at: newExpiresAt
-                ? new Date(newExpiresAt)
-                : new Date(cacheNow.getTime() + 10 * 365 * 24 * 60 * 60 * 1000),
-              ttl_expires_at: newExpiresAt
-                ? new Date(newExpiresAt.getTime() + 60 * 60 * 1000)
-                : new Date(cacheNow.getTime() + 10 * 365 * 24 * 60 * 60 * 1000),
+              plan_source: redemption.provider || "redeem_code",
+              app_cache_expires_at: cacheWindow.appCacheExpiresAt,
+              ttl_expires_at: cacheWindow.ttlExpiresAt,
               cached_at: cacheNow,
               source: "code_redemption",
             },
@@ -526,5 +554,6 @@ module.exports = {
   syncTebexEntitlement,
   processRedemption,
   isGuildOwner,
+  buildPremiumCacheWindow,
   DURATION_PRESETS,
 };

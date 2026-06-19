@@ -179,6 +179,7 @@ test("premiumService.cachePremiumStatus guarda lifetime correctamente", async ()
     tier: 'lifetime',
     expires_at: null,
     lifetime: true,
+    plan_source: 'tebex',
   };
 
   await service.cachePremiumStatus('guild-cache-test', premiumData);
@@ -188,6 +189,7 @@ test("premiumService.cachePremiumStatus guarda lifetime correctamente", async ()
   assert.equal(savedData.tier, 'lifetime');
   assert.equal(savedData.lifetime, true);
   assert.equal(savedData.expires_at, null);
+  assert.equal(savedData.plan_source, 'tebex');
   // Verify the two-field TTL split (key fix for stale cache bug)
   assert.ok(savedData.app_cache_expires_at instanceof Date, 'app_cache_expires_at should be a Date');
   assert.ok(savedData.ttl_expires_at instanceof Date, 'ttl_expires_at should be a Date');

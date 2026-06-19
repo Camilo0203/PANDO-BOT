@@ -96,7 +96,7 @@ module.exports = {
       failed_partial_sync: "Sync fallida o parcial: `{{count}}`",
       heartbeat: "Ultima vez visto: `{{lastSeen}}`\nGuilds: `{{guilds}}`",
       high: "ALTO",
-      interaction_totals: "Total: `{{total}}`\nOK/Error/Denied/Rate: `{{ok}}/{{errors}}/{{denied}}/{{rateLimited}}`",
+      interaction_totals: "Total: `{{total}}`\nOK/Error/Denegadas/Limitadas: `{{ok}}/{{errors}}/{{denied}}/{{rateLimited}}`",
       managed_rules: "Reglas gestionadas: `{{count}}`",
       missing_permissions: "Permisos faltantes: `{{count}}`",
       no: "No",

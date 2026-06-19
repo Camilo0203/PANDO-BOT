@@ -90,15 +90,10 @@ function validateEnv(env = process.env, options = {}) {
   if (env.ERROR_LOG_TO_FILE !== undefined && errorLogToFile === undefined) {
     errors.push("ERROR_LOG_TO_FILE must be a boolean-like value (true/false, 1/0, yes/no, on/off).");
   }
-  // Square Cloud has an ephemeral filesystem — file logs are lost on every restart.
-  if (strictProduction && errorLogToFile === true) {
-    warnings.push("ERROR_LOG_TO_FILE=true on Square Cloud writes to ephemeral storage (lost on restart). Set to false and use stdout logging instead.");
-  }
-
   const botApiKey = env.BOT_API_KEY;
   if (strictProduction) {
     if (!botApiKey || !botApiKey.trim()) {
-      errors.push("BOT_API_KEY is required in production. The premium service uses it to authenticate against the Supabase billing-guild-status function.");
+      errors.push("BOT_API_KEY is required in production for the premium entitlement API fallback.");
     } else if (botApiKey.trim().length < 32) {
       errors.push("BOT_API_KEY must be at least 32 characters in production (use a 64-char hex string for security).");
     }
@@ -106,14 +101,14 @@ function validateEnv(env = process.env, options = {}) {
     warnings.push("BOT_API_KEY is not set. Premium features will be disabled.");
   }
 
-  // Square Cloud health check requires PORT=80
+  // The VPS reserves 3000 for web and 3001 for status.
   if (strictProduction) {
     const prodPort = resolveRuntimePort(env, { defaultPort: 80 });
-    if (prodPort !== null && prodPort !== 80) {
-      warnings.push("Square Cloud requires PORT=80 for health checks. Current: " + prodPort);
+    if ([3000, 3001].includes(prodPort)) {
+      warnings.push("The bot PORT conflicts with a documented TON618 service port. Use PORT=8080 for the private bot health endpoint.");
     }
     if (env.PORT === undefined && parsePort(env.SERVER_PORT, null) !== null) {
-      warnings.push("SERVER_PORT is ignored for production startup when PORT is absent. Square Cloud should provide PORT=80.");
+      warnings.push("SERVER_PORT is ignored by the production resolver when PORT is absent. Set PORT=8080 explicitly on the VPS.");
     }
   }
 
@@ -146,7 +141,7 @@ function validateEnv(env = process.env, options = {}) {
     warnings.push("DASHBOARD_BRIDGE_INTERVAL_MS outside recommended range (30000-300000). Beta billing expects 60000ms.");
   }
   if (supabaseUrl && supabaseKey && dashboardBridgeIntervalMs !== null && dashboardBridgeIntervalMs > 60000) {
-    warnings.push("DASHBOARD_BRIDGE_INTERVAL_MS above 60000ms. Paid beta plan projection may feel delayed.");
+    warnings.push("DASHBOARD_BRIDGE_INTERVAL_MS above 60000ms. PRO entitlement projection may feel delayed.");
   }
 
   // Hash salt validation (HMAC-SHA256 salt should be random and stable)

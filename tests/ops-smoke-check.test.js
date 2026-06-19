@@ -9,11 +9,11 @@ const {
 
 test("resolveHealthUrl prioriza argumento posicional", () => {
   const url = resolveHealthUrl(
-    ["node", "ops-smoke-check.js", "https://bot.ton618.app/health"],
+    ["node", "ops-smoke-check.js", "https://health.example.com/health"],
     {}
   );
 
-  assert.equal(url, "https://bot.ton618.app/health");
+  assert.equal(url, "https://health.example.com/health");
 });
 
 test("shouldAllowDegraded soporta flag explicito", () => {

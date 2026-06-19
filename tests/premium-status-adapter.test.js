@@ -47,6 +47,7 @@ test("resolveGuildPremiumStatus adapta premium activo al shape legacy esperado",
     expires_at: "2027-01-15T00:00:00Z",
     lifetime: false,
     owner_user_id: "owner-123",
+    plan_source: "tebex",
     _meta: {
       source: "api",
       stale: false,
@@ -63,6 +64,7 @@ test("resolveGuildPremiumStatus adapta premium activo al shape legacy esperado",
   assert.equal(status.tierLabel, "PRO Monthly");
   assert.equal(status.planExpiresAt, "2027-01-15T00:00:00Z");
   assert.equal(status.ownerUserId, "owner-123");
+  assert.equal(status.planSource, "tebex");
   assert.equal(status.error, null);
   assert.equal(status.daysUntil > 0, true);
 });

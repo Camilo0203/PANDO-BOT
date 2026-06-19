@@ -48,7 +48,7 @@ async function resolveGuildPremiumStatus(guildId) {
       isPro: isPremium,
       isPremium: isPremium,
       isLifetime: Boolean(premium?.lifetime),
-      planSource: null,
+      planSource: premium?.plan_source || null,
       planStartedAt: null,
       planExpiresAt: premium?.expires_at || null,
       expiresAt: premium?.expires_at || null,

@@ -11,8 +11,6 @@ const cors = require("cors");
 const BASE_ORIGINS = [
   "https://ton618bot.xyz",
   "https://www.ton618bot.xyz",
-  "https://ton618.app",
-  "https://www.ton618.app",
   "https://ton618-web.squareweb.app",
   "https://ton618.squareweb.app",
   "https://dash.ton618bot.xyz",

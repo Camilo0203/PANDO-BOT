@@ -293,7 +293,6 @@ async function processGrantEvent({
   const findProviderRedemption = services.findRedemptionByProvider
     || findRedemptionByProvider;
   const redeemActivationCode = services.processRedemption || processRedemption;
-  const revokeCodes = services.revokeProviderCodes || revokeProviderCodes;
   const deliverDirectMessage = services.sendDirectMessage || sendDirectMessage;
   const generateActivationCode = services.generateCode || generateCode;
   const packages = extractPackages(body);
@@ -390,11 +389,6 @@ async function processGrantEvent({
           buildPurchaseEmbed({ code, tier: tierInfo.tier, renewal: false })
         );
         if (!sent) {
-          await revokeCodes({
-            provider: "tebex",
-            orderId: providerOrderId,
-            reason: "delivery_failed",
-          });
           throw new Error("Could not deliver the Tebex activation code by Discord DM");
         }
       }

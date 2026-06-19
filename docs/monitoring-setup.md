@@ -56,7 +56,7 @@ SENTRY_DSN=https://your-sentry-dsn@sentry.io/project-id
 **Setup:**
 1. Create account at https://uptimerobot.com
 2. Add HTTP(s) monitor
-3. URL: `https://bot.ton618.app/health`
+3. URL: the public endpoint configured in `BOT_HEALTHCHECK_URL`
 4. Interval: 5 minutes
 5. Alert contacts: Email, SMS, Discord webhook
 
@@ -420,7 +420,7 @@ Before going live, test all alert channels:
 
 ```bash
 # Test health endpoint
-curl https://bot.ton618.app/health
+curl "$BOT_HEALTHCHECK_URL"
 
 # Test Discord webhook
 node -e "require('./src/utils/alerting').sendDiscordAlert('info', 'Test Alert', 'Testing monitoring setup')"

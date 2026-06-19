@@ -4,9 +4,41 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const {
+  buildPremiumCacheWindow,
   buildTebexRevocationFilter,
   shouldRevokeCurrentTebexPlan,
 } = require("../src/utils/proCodeService");
+
+test("activation cache uses the standard fresh and stale windows", () => {
+  const now = new Date("2026-06-14T00:00:00.000Z");
+  const window = buildPremiumCacheWindow(now, {});
+
+  assert.equal(
+    window.appCacheExpiresAt.toISOString(),
+    "2026-06-14T00:05:00.000Z"
+  );
+  assert.equal(
+    window.ttlExpiresAt.toISOString(),
+    "2026-06-14T01:00:00.000Z"
+  );
+});
+
+test("activation cache keeps stale fallback at least as long as fresh TTL", () => {
+  const now = new Date("2026-06-14T00:00:00.000Z");
+  const window = buildPremiumCacheWindow(now, {
+    PREMIUM_CACHE_TTL_MS: "600000",
+    PREMIUM_STALE_CACHE_MS: "300000",
+  });
+
+  assert.equal(
+    window.appCacheExpiresAt.toISOString(),
+    "2026-06-14T00:10:00.000Z"
+  );
+  assert.equal(
+    window.ttlExpiresAt.toISOString(),
+    "2026-06-14T00:10:00.000Z"
+  );
+});
 
 test("refunds target the exact Tebex order", () => {
   assert.equal(

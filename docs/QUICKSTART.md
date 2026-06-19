@@ -63,7 +63,7 @@ Get your bilingual TON618 setup running in 5 minutes.
     MONGO_DB=ton618
     OWNER_ID=your_discord_user_id
    ```
-4. If you are going to run with `NODE_ENV=production` or deploy to Square Cloud, also set:
+4. If you are going to run with `NODE_ENV=production` on the VPS, also set:
    ```env
    BOT_API_KEY=generate_a_32_byte_hex_secret
    ```
@@ -209,7 +209,7 @@ This sets a 60-minute SLA for first response.
 ## Production Deployment
 
 For production hosting, see `docs/DEPLOYMENT.md` for:
-- Cheap hosting options (Square Cloud, Railway, Render)
-- PM2 process management
+- The official VPS and PM2 architecture
+- The required `lavalink`, `ton618-bot`, `ton618-web`, and `ton618-status` processes
 - MongoDB backup strategies
 - Health monitoring setup
