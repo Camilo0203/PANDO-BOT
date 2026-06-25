@@ -62,9 +62,9 @@ if [ ! -d "$BASE/ton618-bot" ]; then
     git clone https://github.com/Camilo0203/ton618-bot.git > /dev/null 2>&1
 fi
 
-if [ ! -d "$BASE/ton618-music" ]; then
-    echo "  Clonando ton618-music..."
-    git clone https://github.com/Camilo0203/ton618-music.git > /dev/null 2>&1
+if [ ! -d "$BASE/ton618-shared" ]; then
+    echo "  Clonando ton618-shared..."
+    git clone https://github.com/Camilo0203/ton618-shared.git > /dev/null 2>&1
 fi
 
 if [ ! -d "$BASE/ton618-web" ]; then
@@ -72,16 +72,22 @@ if [ ! -d "$BASE/ton618-web" ]; then
     git clone https://github.com/Camilo0203/ton618-web.git > /dev/null 2>&1
 fi
 
+if [ ! -d "$BASE/ton618-status" ]; then
+    echo "  Clonando ton618-status..."
+    git clone https://github.com/Camilo0203/ton618-status.git > /dev/null 2>&1
+fi
+
 # ========== PASO 7: INSTALAR DEPENDENCIAS Y BUILD ==========
 echo -e "${YELLOW}[7/8] Instalando dependencias (toma ~2 min)...${NC}"
+cd $BASE/ton618-shared && npm ci > /dev/null 2>&1 && npm run build > /dev/null 2>&1 && echo -e "  ${GREEN}Shared listo${NC}"
 cd $BASE/ton618-bot && npm ci > /dev/null 2>&1 && echo -e "  ${GREEN}Bot listo${NC}"
-cd $BASE/ton618-music && npm ci > /dev/null 2>&1 && echo -e "  ${GREEN}Musica listo${NC}"
 cd $BASE/ton618-web && npm ci > /dev/null 2>&1 && npm run build > /dev/null 2>&1 && echo -e "  ${GREEN}Web lista${NC}"
+cd $BASE/ton618-status && npm ci > /dev/null 2>&1 && npm run build > /dev/null 2>&1 && echo -e "  ${GREEN}Status listo${NC}"
 
 # Descargar Lavalink
 echo "  Descargando Lavalink..."
-mkdir -p $BASE/ton618-music/lavalink
-cd $BASE/ton618-music/lavalink
+mkdir -p $BASE/ton618-bot/lavalink
+cd $BASE/ton618-bot/lavalink
 if [ ! -f "Lavalink.jar" ]; then
     wget -q --show-progress https://github.com/lavalink-devs/Lavalink/releases/download/4.2.2/Lavalink.jar
 fi
@@ -99,6 +105,14 @@ ton618bot.xyz {
 
 www.ton618bot.xyz {
     redir https://ton618bot.xyz{uri}
+}
+
+status.ton618bot.xyz {
+    reverse_proxy localhost:3001
+    header {
+        X-Frame-Options "DENY"
+        X-Content-Type-Options "nosniff"
+    }
 }
 EOF
 
@@ -126,12 +140,17 @@ echo ""
 echo -e "${YELLOW}1. Configurar el Bot:${NC}"
 echo "   nano /opt/ton618/ton618-bot/.env"
 echo ""
-echo -e "${YELLOW}2. Configurar la Musica:${NC}"
-echo "   nano /opt/ton618/ton618-music/.env"
+echo -e "${YELLOW}2. Configurar Lavalink (en el mismo Bot):${NC}"
+echo "   cp /opt/ton618/ton618-bot/.env.lavalink.example /opt/ton618/ton618-bot/.env.lavalink"
+echo "   nano /opt/ton618/ton618-bot/.env.lavalink"
 echo ""
 echo -e "${YELLOW}3. Configurar la Web:${NC}"
 echo "   nano /opt/ton618/ton618-web/.env"
 echo ""
-echo -e "${YELLOW}4. Despues de configurar todo, ejecutar:${NC}"
+echo -e "${YELLOW}4. Configurar Status:${NC}"
+echo "   cp /opt/ton618/ton618-status/.env.example /opt/ton618/ton618-status/.env"
+echo "   nano /opt/ton618/ton618-status/.env"
+echo ""
+echo -e "${YELLOW}5. Despues de configurar todo, ejecutar:${NC}"
 echo "   bash /opt/ton618/ton618-bot/scripts/deploy-vps.sh"
 echo ""

@@ -175,21 +175,16 @@ npm run build
 # Deploy to Netlify / Vercel / Static host
 ```
 
-### Music (ton618-music)
+### Music and Lavalink
 ```bash
-cd ../ton618-music
-npm ci
-node deploy-commands.js
-npm start
+cd ../ton618-bot
+npm run lavalink
 ```
 
 ### Lavalink Nodes
 ```bash
-cd ../Nodo\ Lavalink
-# Start PRO node (port 2333)
-java -jar Lavalink.jar --spring.config.location=./lavalink/application.yml
-# Start FREE node (port 2334)
-java -jar Lavalink.jar --spring.config.location=./lavalink/application-free.yml
+cd ../ton618-bot
+npm run lavalink
 ```
 
 ---

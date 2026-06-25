@@ -16,6 +16,13 @@ test("resolveHealthUrl prioriza argumento posicional", () => {
   assert.equal(url, "https://health.example.com/health");
 });
 
+test("resolveHealthUrl usa el puerto de produccion configurado", () => {
+  assert.equal(
+    resolveHealthUrl(["node", "script"], { NODE_ENV: "production", PORT: "8080" }),
+    "http://127.0.0.1:8080/health"
+  );
+});
+
 test("shouldAllowDegraded soporta flag explicito", () => {
   assert.equal(
     shouldAllowDegraded(["node", "ops-smoke-check.js", "--allow-degraded"], {}),

@@ -1,5 +1,8 @@
 "use strict";
 
+require("dotenv").config({ path: [".env.local", ".env"], quiet: true });
+const { resolveRuntimePort } = require("../src/utils/envHelpers");
+
 function getPositionalArg(argv = process.argv) {
   return argv.slice(2).find((arg) => !arg.startsWith("--")) || null;
 }
@@ -12,7 +15,7 @@ function resolveHealthUrl(argv = process.argv, env = process.env) {
   const explicit = getPositionalArg(argv) || env.BOT_HEALTHCHECK_URL;
   if (explicit) return explicit;
 
-  const port = env.SERVER_PORT || env.PORT || "8080";
+  const port = resolveRuntimePort(env, { defaultPort: 8080 });
   return `http://127.0.0.1:${port}/health`;
 }
 

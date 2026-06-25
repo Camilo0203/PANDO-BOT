@@ -119,7 +119,7 @@ PRO_UPGRADE_URL=https://ton618bot.xyz/pricing
 
 Ejecuta:
 ```bash
-nano /opt/ton618/ton618-music/.env
+nano /opt/ton618/ton618-bot/.env.lavalink
 ```
 
 Borra todo y pega:
@@ -262,7 +262,7 @@ pm2 logs ton618-bot --lines 20
 
 **"Lavalink.jar not found"**
 ```bash
-wget -O /opt/ton618/ton618-music/lavalink/Lavalink.jar https://github.com/lavalink-devs/Lavalink/releases/download/4.2.2/Lavalink.jar
+wget -O /opt/ton618/ton618-bot/lavalink/Lavalink.jar https://github.com/lavalink-devs/Lavalink/releases/download/4.2.2/Lavalink.jar
 ```
 
 **La web no carga**

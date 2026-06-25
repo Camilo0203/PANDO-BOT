@@ -270,7 +270,14 @@ module.exports = {
         embed
           .setColor(color)
           .setDescription(t(language, "premium.pro_active"))
-          .addFields(...premiumFields);
+          .addFields(
+            ...premiumFields,
+            {
+              name: t(language, "premium.status.pro_features"),
+              value: t(language, "premium.status.pro_features_value"),
+              inline: false,
+            }
+          );
 
         const startedAt = toDiscordDate(status.planStartedAt);
         if (startedAt) {
@@ -319,6 +326,16 @@ module.exports = {
               name: t(language, "premium.status_label"),
               value: t(language, "premium.active"),
               inline: true,
+            },
+            {
+              name: t(language, "premium.status.free_limits"),
+              value: t(language, "premium.status.free_limits_value"),
+              inline: false,
+            },
+            {
+              name: t(language, "premium.status.pro_unlocks"),
+              value: t(language, "premium.status.pro_unlocks_value"),
+              inline: false,
             }
           );
 

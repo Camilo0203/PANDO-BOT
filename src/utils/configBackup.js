@@ -105,6 +105,8 @@ const SETTINGS_KEYS = [
   "panel_channel_id",
   "dashboard_general_settings",
   "dashboard_moderation_settings",
+  "dashboard_automod_settings",
+  "dashboard_music_settings",
   "dashboard_preferences",
   "commercial_settings",
   "disabled_commands",
@@ -311,6 +313,12 @@ function sanitizeSettings(raw = {}) {
       : undefined,
     dashboard_moderation_settings: raw.dashboard_moderation_settings && typeof raw.dashboard_moderation_settings === "object"
       ? raw.dashboard_moderation_settings
+      : undefined,
+    dashboard_automod_settings: raw.dashboard_automod_settings && typeof raw.dashboard_automod_settings === "object"
+      ? raw.dashboard_automod_settings
+      : undefined,
+    dashboard_music_settings: raw.dashboard_music_settings && typeof raw.dashboard_music_settings === "object"
+      ? raw.dashboard_music_settings
       : undefined,
     dashboard_preferences: raw.dashboard_preferences && typeof raw.dashboard_preferences === "object"
       ? raw.dashboard_preferences

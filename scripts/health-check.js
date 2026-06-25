@@ -7,6 +7,8 @@
 
 const http = require('http');
 const https = require('https');
+require('dotenv').config({ path: ['.env.local', '.env'], quiet: true });
+const { resolveRuntimePort } = require('../src/utils/envHelpers');
 
 const colors = {
   reset: '\x1b[0m',
@@ -16,8 +18,9 @@ const colors = {
   cyan: '\x1b[36m',
 };
 
-const HEALTH_URL = process.env.HEALTH_CHECK_URL || 'http://localhost:80/health';
-const READY_URL = process.env.READY_CHECK_URL || 'http://localhost:80/ready';
+const runtimePort = resolveRuntimePort(process.env, { defaultPort: 8080 });
+const HEALTH_URL = process.env.HEALTH_CHECK_URL || `http://localhost:${runtimePort}/health`;
+const READY_URL = process.env.READY_CHECK_URL || `http://localhost:${runtimePort}/ready`;
 const TIMEOUT_MS = 5000;
 const MAX_RETRIES = 5;
 const RETRY_DELAY_MS = 2000;

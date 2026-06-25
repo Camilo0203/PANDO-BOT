@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node --max-old-space-size=400 index.js",
+    "lavalink": "node scripts/lavalink-wrapper.js",
     "dev": "nodemon index.js",
     "env:check": "node scripts/validate-env.js",
     "env:check:prod": "node scripts/validate-env.js --mode=production",
@@ -21,13 +22,16 @@
     "smoke:health": "node scripts/ops-smoke-check.js",
     "audit:readiness": "node scripts/audit-production-readiness.js",
     "audit:i18n": "node scripts/audit-i18n-coverage.js",
+    "audit:secrets": "node scripts/scan-secrets.js",
     "cleanup:commands": "node scripts/cleanup-commands.js",
     "migrate:dates": "node scripts/migrate-date-fields.js",
     "migrate:settings": "node scripts/migrate-settings-schema.js",
     "db:indexes": "node scripts/ensure-indexes.js",
     "build:ts": "tsc --noEmit",
     "test:concurrency:votes": "node scripts/test-concurrency-votes.js",
-    "test": "node --test tests/*.test.js",
+    "test": "node --test --test-concurrency=1 tests/*.test.js",
+    "verify": "npm run env:check:prod && npm run build:ts && npm run audit:secrets && npm run audit:i18n && npm run audit:readiness && npm test",
+    "security:audit": "npm audit --omit=dev",
     "generate:keys": "node scripts/generate-production-keys.js",
     "validate:production": "NODE_ENV=production node scripts/validate-production.js",
     "health:check": "node scripts/health-check.js",
@@ -47,12 +51,10 @@
     "helmet": "^8.2.0",
     "kazagumo": "^3.4.3",
     "mongodb": "^7.1.0",
-    "mongodb-mcp-server": "^0.2.0",
     "node-cron": "^4.2.1",
     "playwright": "^1.52.0",
     "rss-parser": "^3.13.0",
     "shoukaku": "^4.3.0",
-    "ton618-music": "file:../ton618-music",
     "undici": "^7.26.0",
     "vhost": "^3.0.2",
     "youtubei.js": "^17.0.1"
@@ -62,7 +64,14 @@
     "nodemon": "^3.1.14",
     "typescript": "^6.0.3"
   },
-  "overrides": {},
+  "overrides": {
+    "discord.js": {
+      "undici": "^6.27.0"
+    },
+    "@discordjs/rest": {
+      "undici": "^6.27.0"
+    }
+  },
   "engines": {
     "node": ">=20.0.0"
   }

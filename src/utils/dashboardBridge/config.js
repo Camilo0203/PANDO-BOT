@@ -65,6 +65,8 @@ const RELEVANT_SETTINGS_KEYS = new Set([
   "disabled_playbooks",
   "dashboard_general_settings",
   "dashboard_moderation_settings",
+  "dashboard_automod_settings",
+  "dashboard_music_settings",
   "dashboard_preferences",
 ]);
 

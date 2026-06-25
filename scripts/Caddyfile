@@ -21,3 +21,13 @@ ton618bot.xyz {
 www.ton618bot.xyz {
     redir https://ton618bot.xyz{uri}
 }
+
+status.ton618bot.xyz {
+    reverse_proxy localhost:3001
+
+    header {
+        X-Frame-Options "DENY"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+}

@@ -2,6 +2,8 @@ const {
   buildSettingsDefaults,
   buildDashboardGeneralSettingsDefaults,
   buildDashboardModerationSettingsDefaults,
+  buildDashboardAutomodSettingsDefaults,
+  buildDashboardMusicSettingsDefaults,
   buildDashboardPreferencesDefaults,
   buildCommercialSettingsDefaults,
 } = require("./database/defaults");
@@ -28,6 +30,7 @@ const LANGUAGE_KEYS = new Set(["es", "en"]);
 const DASHBOARD_COMMAND_MODE_KEYS = new Set(["mention", "prefix"]);
 const DASHBOARD_MODERATION_PRESET_KEYS = new Set(["relaxed", "balanced", "strict"]);
 const DASHBOARD_RAID_PRESET_KEYS = new Set(["off", "balanced", "lockdown"]);
+const DASHBOARD_AUTOMOD_PRESET_KEYS = new Set(["off", "balanced", "strict"]);
 const OPS_PLAN_KEYS = new Set(["free", "pro", "enterprise"]);
 const AUTOMOD_PRESET_KEY_SET = new Set(AUTOMOD_PRESET_KEYS);
 // Keep this list aligned with ton618-web `dashboardSectionIds`.
@@ -235,6 +238,65 @@ function sanitizeDashboardModerationSettings(value, fallback = buildDashboardMod
     duplicateWindowSeconds: toInt(source.duplicateWindowSeconds, 10, 300, defaults.duplicateWindowSeconds),
     raidProtectionEnabled: toBool(source.raidProtectionEnabled, defaults.raidProtectionEnabled),
     raidPreset: DASHBOARD_RAID_PRESET_KEYS.has(raidPreset) ? raidPreset : defaults.raidPreset,
+  };
+}
+
+function sanitizeDashboardAutomodSettings(value, fallback = buildDashboardAutomodSettingsDefaults()) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const defaults = { ...fallback };
+  const preset = String(source.preset || "").trim().toLowerCase();
+
+  return {
+    enabled: toBool(source.enabled, defaults.enabled),
+    preset: DASHBOARD_AUTOMOD_PRESET_KEYS.has(preset) ? preset : defaults.preset,
+    blockInvites: toBool(source.blockInvites ?? source.block_invites, defaults.blockInvites),
+    blockLinks: toBool(source.blockLinks ?? source.block_links, defaults.blockLinks),
+    blockSpam: toBool(source.blockSpam ?? source.block_spam, defaults.blockSpam),
+    blockMassMentions: toBool(
+      source.blockMassMentions ?? source.block_mass_mentions,
+      defaults.blockMassMentions
+    ),
+    blockCaps: toBool(source.blockCaps ?? source.block_caps, defaults.blockCaps),
+    scamProtection: toBool(source.scamProtection ?? source.scam_protection, defaults.scamProtection),
+    regexProtection: toBool(source.regexProtection ?? source.regex_protection, defaults.regexProtection),
+    logChannelId: toDiscordIdOrNull(source.logChannelId ?? source.log_channel_id),
+    alertRoleId: toDiscordIdOrNull(source.alertRoleId ?? source.alert_role_id),
+  };
+}
+
+function sanitizeDashboardMusicSettings(value, fallback = buildDashboardMusicSettingsDefaults()) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const defaults = { ...fallback };
+
+  return {
+    enabled: toBool(source.enabled, defaults.enabled),
+    defaultVolume: toInt(source.defaultVolume ?? source.default_volume, 1, 100, defaults.defaultVolume),
+    maxFreeQueue: toInt(source.maxFreeQueue ?? source.max_free_queue, 1, 50, defaults.maxFreeQueue),
+    maxProQueue: toInt(source.maxProQueue ?? source.max_pro_queue, 10, 500, defaults.maxProQueue),
+    maxFreeDurationMinutes: toInt(
+      source.maxFreeDurationMinutes ?? source.max_free_duration_minutes,
+      1,
+      60,
+      defaults.maxFreeDurationMinutes
+    ),
+    maxProDurationMinutes: toInt(
+      source.maxProDurationMinutes ?? source.max_pro_duration_minutes,
+      10,
+      720,
+      defaults.maxProDurationMinutes
+    ),
+    allowSpotify: toBool(source.allowSpotify ?? source.allow_spotify, defaults.allowSpotify),
+    allowPlaylists: toBool(source.allowPlaylists ?? source.allow_playlists, defaults.allowPlaylists),
+    allowFilters: toBool(source.allowFilters ?? source.allow_filters, defaults.allowFilters),
+    djRoleId: toDiscordIdOrNull(source.djRoleId ?? source.dj_role_id),
+    announceNowPlaying: toBool(
+      source.announceNowPlaying ?? source.announce_now_playing,
+      defaults.announceNowPlaying
+    ),
+    disconnectOnEmpty: toBool(
+      source.disconnectOnEmpty ?? source.disconnect_on_empty,
+      defaults.disconnectOnEmpty
+    ),
   };
 }
 
@@ -458,6 +520,14 @@ function sanitizeSettingsRecord(guildId, raw = {}, options = {}) {
   out.dashboard_moderation_settings = sanitizeDashboardModerationSettings(
     source.dashboard_moderation_settings,
     defaults.dashboard_moderation_settings
+  );
+  out.dashboard_automod_settings = sanitizeDashboardAutomodSettings(
+    source.dashboard_automod_settings,
+    defaults.dashboard_automod_settings
+  );
+  out.dashboard_music_settings = sanitizeDashboardMusicSettings(
+    source.dashboard_music_settings,
+    defaults.dashboard_music_settings
   );
   out.dashboard_preferences = sanitizeDashboardPreferences(
     source.dashboard_preferences,

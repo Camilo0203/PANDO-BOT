@@ -65,6 +65,8 @@ const ENV_SCHEMA = {
   HEALTH_STARTUP_GRACE_MS: { required: false, type: "number", default: 90000, min: 1000 },
   HEALTH_HEARTBEAT_MS: { required: false, type: "number", default: 60000, min: 1000 },
   HEALTH_EVALUATE_MS: { required: false, type: "number", default: 300000, min: 1000 },
+  HEALTH_MONITOR_INTERVAL_MS: { required: false, type: "number", default: 30000, min: 5000 },
+  HEALTH_CHECK_INTERVAL_MS: { required: false, type: "number", default: 30000, min: 5000 },
 
   // Rate Limiting
   USER_RATE_LIMIT_MAX_REQUESTS: { required: false, type: "number", default: 5, min: 1 },
@@ -99,6 +101,9 @@ const ENV_SCHEMA = {
   SENTRY_DSN: { required: false, type: "string" },
   LOGTAIL_SOURCE_TOKEN: { required: false, type: "string" },
   ALERT_DISCORD_WEBHOOK: { required: false, type: "string", pattern: /^https:\/\/discord\.com\/api\/webhooks\/\d+\/.+/ },
+  SECURITY_ALERTS_WEBHOOK_URL: { required: false, type: "string", pattern: /^https:\/\/discord\.com\/api\/webhooks\/\d+\/.+/ },
+  OPERATIONAL_ALERT_COOLDOWN_MS: { required: false, type: "number", default: 300000, min: 10000 },
+  MEMORY_WARNING_THRESHOLD_MB: { required: false, type: "number", default: 0, min: 0 },
 };
 
 /**

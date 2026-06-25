@@ -87,6 +87,56 @@ function normalizeIncomingCommandRateLimitOverrides(value) {
   return out;
 }
 
+function normalizeDashboardAutomodSettings(value) {
+  const source = isPlainObject(value) ? value : {};
+  const preset = ["off", "balanced", "strict"].includes(String(source.preset || "").toLowerCase())
+    ? String(source.preset).toLowerCase()
+    : "balanced";
+
+  return {
+    enabled: toBoolean(source.enabled, false),
+    preset,
+    blockInvites: toBoolean(source.blockInvites ?? source.block_invites, true),
+    blockLinks: toBoolean(source.blockLinks ?? source.block_links, false),
+    blockSpam: toBoolean(source.blockSpam ?? source.block_spam, true),
+    blockMassMentions: toBoolean(source.blockMassMentions ?? source.block_mass_mentions, true),
+    blockCaps: toBoolean(source.blockCaps ?? source.block_caps, false),
+    scamProtection: toBoolean(source.scamProtection ?? source.scam_protection, true),
+    regexProtection: toBoolean(source.regexProtection ?? source.regex_protection, false),
+    logChannelId: toNullableDiscordId(source.logChannelId ?? source.log_channel_id),
+    alertRoleId: toNullableDiscordId(source.alertRoleId ?? source.alert_role_id),
+  };
+}
+
+function normalizeDashboardMusicSettings(value) {
+  const source = isPlainObject(value) ? value : {};
+
+  return {
+    enabled: toBoolean(source.enabled, true),
+    defaultVolume: toInt(source.defaultVolume ?? source.default_volume, 80, 1, 100),
+    maxFreeQueue: toInt(source.maxFreeQueue ?? source.max_free_queue, 10, 1, 50),
+    maxProQueue: toInt(source.maxProQueue ?? source.max_pro_queue, 200, 10, 500),
+    maxFreeDurationMinutes: toInt(
+      source.maxFreeDurationMinutes ?? source.max_free_duration_minutes,
+      5,
+      1,
+      60
+    ),
+    maxProDurationMinutes: toInt(
+      source.maxProDurationMinutes ?? source.max_pro_duration_minutes,
+      360,
+      10,
+      720
+    ),
+    allowSpotify: toBoolean(source.allowSpotify ?? source.allow_spotify, true),
+    allowPlaylists: toBoolean(source.allowPlaylists ?? source.allow_playlists, true),
+    allowFilters: toBoolean(source.allowFilters ?? source.allow_filters, true),
+    djRoleId: toNullableDiscordId(source.djRoleId ?? source.dj_role_id),
+    announceNowPlaying: toBoolean(source.announceNowPlaying ?? source.announce_now_playing, true),
+    disconnectOnEmpty: toBoolean(source.disconnectOnEmpty ?? source.disconnect_on_empty, true),
+  };
+}
+
 function buildDashboardConfigPayload(input = {}) {
   const source = isPlainObject(input) &&
     (Object.prototype.hasOwnProperty.call(input, "settingsRecord") ||
@@ -288,6 +338,12 @@ function buildDashboardConfigPayload(input = {}) {
       maintenanceMode: settingsRecord.maintenance_mode === true,
       maintenanceReason: settingsRecord.maintenance_reason || null,
       legacyProtectionSettings: legacyProtection,
+      automodSettings: normalizeDashboardAutomodSettings(
+        settingsRecord.dashboard_automod_settings
+      ),
+      musicSettings: normalizeDashboardMusicSettings(
+        settingsRecord.dashboard_music_settings
+      ),
     },
     dashboard_preferences: preferences,
     updated_by: null,
@@ -703,11 +759,25 @@ function mapSystemMutationPayload(payload) {
   return patch;
 }
 
+function mapAutomodMutationPayload(payload) {
+  return {
+    dashboard_automod_settings: normalizeDashboardAutomodSettings(payload),
+  };
+}
+
+function mapMusicMutationPayload(payload) {
+  return {
+    dashboard_music_settings: normalizeDashboardMusicSettings(payload),
+  };
+}
+
 
 module.exports = {
   normalizeStoredCommandRateLimitOverrides,
   normalizeOutgoingCommandRateLimitOverrides,
   normalizeIncomingCommandRateLimitOverrides,
+  normalizeDashboardAutomodSettings,
+  normalizeDashboardMusicSettings,
   buildDashboardConfigPayload,
   buildCommercialProjectionFromEntitlement,
   buildSettingsPatchFromDashboardRow,
@@ -720,6 +790,8 @@ module.exports = {
   mapWelcomeMutationPayload,
   mapSuggestionMutationPayload,
   mapModlogMutationPayload,
+  mapAutomodMutationPayload,
+  mapMusicMutationPayload,
   mapCommandsMutationPayload,
   mapSystemMutationPayload,
 };

@@ -5,13 +5,13 @@ architecture.
 
 Production runs with PM2 on the VPS:
 
-- `lavalink`
+- `ton618-lavalink`
 - `ton618-bot`
 - `ton618-web`
 - `ton618-status`
 
-`ton618-music` is loaded as a module by `ton618-bot` and must not run as a
-separate PM2 process. Web and status are published through Cloudflare Tunnel.
+Music is built into `ton618-bot`; no extra repository or PM2 process is needed.
+Web and status are published through Cloudflare Tunnel.
 
 Use [README_DEPLOY.md](../README_DEPLOY.md) as the authoritative architecture,
 deployment, verification and rollback runbook. Do not use this legacy filename

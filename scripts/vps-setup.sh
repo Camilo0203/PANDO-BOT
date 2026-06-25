@@ -52,18 +52,20 @@ cd /opt/ton618
 # Clone repositories
 echo "[8/10] Cloning repositories..."
 git clone https://github.com/Camilo0203/ton618-bot.git
-git clone https://github.com/Camilo0203/ton618-music.git
 git clone https://github.com/Camilo0203/ton618-web.git
+git clone https://github.com/Camilo0203/ton618-status.git
+git clone https://github.com/Camilo0203/ton618-shared.git
 
 # Install dependencies
 echo "[9/10] Installing dependencies..."
+cd /opt/ton618/ton618-shared && npm ci && npm run build
 cd /opt/ton618/ton618-bot && npm ci
-cd /opt/ton618/ton618-music && npm ci
 cd /opt/ton618/ton618-web && npm ci && npm run build
+cd /opt/ton618/ton618-status && npm ci && npm run build
 
 # Download Lavalink JAR
 echo "[10/10] Downloading Lavalink..."
-cd /opt/ton618/ton618-music/lavalink
+cd /opt/ton618/ton618-bot/lavalink
 wget -q --show-progress https://github.com/lavalink-devs/Lavalink/releases/download/4.2.2/Lavalink.jar
 
 echo ""
@@ -72,6 +74,6 @@ echo " Base setup complete!"
 echo "========================================"
 echo ""
 echo "NEXT STEPS:"
-echo "  1. Copy your .env files into each repo"
+echo "  1. Copy your .env files into ton618-bot, ton618-web and ton618-status"
 echo "  2. Run: bash /opt/ton618/ton618-bot/scripts/deploy-vps.sh"
 echo ""

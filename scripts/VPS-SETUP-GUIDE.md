@@ -39,7 +39,7 @@ EOF
 
 ### Música:
 ```bash
-cat > /opt/ton618/ton618-music/.env << 'EOF'
+cat > /opt/ton618/ton618-bot/.env.lavalink << 'EOF'
 DISCORD_TOKEN=mismo-token-del-bot
 DISCORD_CLIENT_ID=tu-client-id
 LAVALINK_PRO_HOST=localhost

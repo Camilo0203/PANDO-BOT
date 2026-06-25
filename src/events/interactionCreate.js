@@ -34,15 +34,7 @@ const activeInteractions = new Set();
 const SETTINGS_MUTATION_COMMANDS = new Set(["config", "setup", "verify"]);
 const SETTINGS_MUTATION_CUSTOM_ID_PREFIXES = ["cfg_center_", "setup_cmd_panel_"];
 const MUSIC_COMMANDS = new Set(["play", "skip", "stop", "pause", "resume", "queue", "nowplaying", "volume", "leave"]);
-let musicInteractionModule = null;
-
-try {
-  musicInteractionModule = require("ton618-music/src/handlers/musicInteractionHandler");
-} catch (error) {
-  logStructured("warn", "interaction.music.preload_failed", {
-    error: error?.message || String(error),
-  });
-}
+let musicInteractionModule = require("../handlers/music/musicInteractionHandler");
 
 function getMusicInteractionHandler() {
   const handler = musicInteractionModule?.musicInteractionHandler;

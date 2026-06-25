@@ -1,24 +1,67 @@
-// Quick verification - Phase 1
-const fs = require("fs");
-const path = require("path");
-console.log("=== TON618 VERIFICATION ===");
-console.log("CWD:", process.cwd());
-console.log("Node:", process.version);
+"use strict";
 
-function walk(dir) {
-  let files = [];
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const full = path.join(dir, entry.name);
-    if (entry.name === "node_modules" || entry.name === ".git") continue;
-    if (entry.isDirectory()) files.push(...walk(full));
-    else if (entry.name.endsWith(".js")) files.push(full);
+const fs = require("node:fs");
+const path = require("node:path");
+const { loadAndValidateCommands } = require("./src/utils/commandLoader");
+
+const ROOT = __dirname;
+const COMMANDS_DIR = path.join(ROOT, "src", "commands");
+const EVENTS_DIR = path.join(ROOT, "src", "events");
+
+function listRuntimeModules(dir) {
+  return fs.readdirSync(dir, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".js"))
+    .map((entry) => path.join(dir, entry.name));
+}
+
+function main() {
+  console.log("=== TON618 RUNTIME VERIFICATION ===");
+  console.log(`Node: ${process.version}`);
+
+  const { commands, validationErrors } = loadAndValidateCommands(COMMANDS_DIR);
+  if (validationErrors.length) {
+    for (const error of validationErrors) {
+      console.error(`COMMAND ERROR: ${error}`);
+    }
+  } else {
+    console.log(`Commands: ${commands.length} loaded and validated.`);
   }
-  return files;
+
+  const eventErrors = [];
+  for (const filePath of listRuntimeModules(EVENTS_DIR)) {
+    try {
+      delete require.cache[require.resolve(filePath)];
+      const event = require(filePath);
+      if (!event?.name || typeof event.execute !== "function") {
+        eventErrors.push(`${path.relative(ROOT, filePath)} has an invalid event export.`);
+      }
+    } catch (error) {
+      eventErrors.push(`${path.relative(ROOT, filePath)}: ${error?.message || String(error)}`);
+    }
+  }
+
+  if (eventErrors.length) {
+    for (const error of eventErrors) {
+      console.error(`EVENT ERROR: ${error}`);
+    }
+  } else {
+    console.log("Events: all runtime event modules loaded successfully.");
+  }
+
+  const locales = ["en", "es"];
+  for (const language of locales) {
+    const locale = require(`./src/locales/${language}`);
+    if (!locale || typeof locale !== "object" || !Object.keys(locale).length) {
+      console.error(`LOCALE ERROR: ${language} is empty or invalid.`);
+      validationErrors.push(`Invalid ${language} locale`);
+    } else {
+      console.log(`Locale ${language}: ${Object.keys(locale).length} top-level entries loaded.`);
+    }
+  }
+
+  const failed = validationErrors.length > 0 || eventErrors.length > 0;
+  console.log(failed ? "RESULT: FAILED" : "RESULT: PASSED");
+  process.exitCode = failed ? 1 : 0;
 }
-const srcFiles = walk(path.join(__dirname, "src"));
-console.log("Source files found:", srcFiles.length);
-let errors = 0;
-for (const f of srcFiles) {
-  try { require(f); } catch(e) { errors++; console.error("FAIL:", path.relative(__dirname, f), "->", e.message.split("\n")[0]); }
-}
-console.log("Module loading errors:", errors);
+
+main();

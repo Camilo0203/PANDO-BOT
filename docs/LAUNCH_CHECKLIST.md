@@ -205,8 +205,8 @@ Complete pre-launch validation checklist for bot-first deployment.
 ### Hosting Platform
 
 **VPS / PM2:**
-- [ ] `lavalink`, `ton618-bot`, `ton618-web` and `ton618-status` are online
-- [ ] `ton618-music` is not running as a separate PM2 process
+- [ ] `ton618-lavalink`, `ton618-bot`, `ton618-web` and `ton618-status` are online
+- [ ] Music commands and controls load directly from `ton618-bot`
 - [ ] Environment variables are set
 - [ ] Bot starts successfully
 - [ ] Logs are accessible

@@ -4,6 +4,17 @@ const express = require("express");
 const path = require("path");
 const crypto = require("crypto");
 const { createCorsMiddleware } = require("../middleware/security");
+const { recordSecurityAuditEvent } = require("../../utils/securityAuditLog");
+const { sendOperationalAlert } = require("../../utils/operationalAlerts");
+
+function verifyApiKey(provided, expected) {
+  if (typeof provided !== "string" || typeof expected !== "string") return false;
+  if (!provided || !expected) return false;
+
+  const providedHash = crypto.createHash("sha256").update(provided, "utf8").digest();
+  const expectedHash = crypto.createHash("sha256").update(expected, "utf8").digest();
+  return crypto.timingSafeEqual(providedHash, expectedHash);
+}
 
 /**
  * Dashboard App (dash.ton618bot.xyz)
@@ -32,17 +43,33 @@ function createDashboardApp({ healthState, buildInfo, getClient }) {
     throw new Error("[Dashboard] DASH_API_KEY is required in production. Set it in your environment variables.");
   }
   if (DASH_API_KEY) {
-    app.use((req, res, next) => {
+    app.use("/api", (req, res, next) => {
       const provided = req.headers["x-api-key"] || "";
-      let authorized = false;
-      try {
-        const a = Buffer.alloc(64);
-        const b = Buffer.alloc(64);
-        a.write(provided.slice(0, 64));
-        b.write(DASH_API_KEY.slice(0, 64));
-        authorized = crypto.timingSafeEqual(a, b) && provided.length === DASH_API_KEY.length;
-      } catch { authorized = false; }
-      if (!authorized) {
+      if (!verifyApiKey(provided, DASH_API_KEY)) {
+        recordSecurityAuditEvent({
+          source: "dashboard-api",
+          action: "dashboard.api.auth_failed",
+          severity: "warning",
+          status: "denied",
+          metadata: {
+            path: req.originalUrl,
+            method: req.method,
+            userAgent: req.get("user-agent") || null,
+            hasApiKey: Boolean(provided),
+          },
+        }).catch(() => {});
+        sendOperationalAlert({
+          type: "security.dashboard.auth_failed",
+          severity: "warning",
+          title: "Dashboard API auth failed",
+          message: "A request attempted to access the private dashboard API with a missing or invalid API key.",
+          details: {
+            path: req.originalUrl,
+            method: req.method,
+            hasApiKey: Boolean(provided),
+          },
+          dedupeKey: "security:dashboard-api-auth",
+        }).catch(() => {});
         return res.status(401).json({ error: "Unauthorized" });
       }
       next();
@@ -119,7 +146,7 @@ function createDashboardApp({ healthState, buildInfo, getClient }) {
         <div class="logo-sm">T6</div>
         <div style="font-weight:700;font-size:0.92rem;">TON618</div>
       </div>
-      <span id="status-badge" class="badge badge-online"><span class="badge-dot"></span> ONLINE</span>
+      <span class="status-badge badge badge-online"><span class="badge-dot"></span> ONLINE</span>
     </div>
 
     <!-- Main Content -->
@@ -131,7 +158,7 @@ function createDashboardApp({ healthState, buildInfo, getClient }) {
           <p class="page-subtitle">Real-time bot telemetry & guild overview</p>
         </div>
         <div class="header-actions">
-          <span id="status-badge" class="badge badge-online"><span class="badge-dot"></span> ONLINE</span>
+          <span class="status-badge badge badge-online"><span class="badge-dot"></span> ONLINE</span>
           <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--text-muted);cursor:pointer;">
             <input type="checkbox" id="auto-refresh" checked style="accent-color:var(--accent-primary);">
             Auto
@@ -332,4 +359,4 @@ function createDashboardApp({ healthState, buildInfo, getClient }) {
   return app;
 }
 
-module.exports = { createDashboardApp };
+module.exports = { createDashboardApp, verifyApiKey };

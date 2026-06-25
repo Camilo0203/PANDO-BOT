@@ -65,6 +65,7 @@ class DeploymentValidator {
     // 2. Dependencies
     this.printSection('2. Dependencies & Security');
     await this.checkDependencies();
+    this.checkSecretScan();
 
     // 3. Configuration Files
     this.printSection('3. Configuration Files');
@@ -155,6 +156,22 @@ class DeploymentValidator {
     }
   }
 
+  checkSecretScan() {
+    try {
+      execSync('node scripts/scan-secrets.js', { stdio: 'pipe' });
+      this.checkPass('secret scan', 'No tracked secrets detected');
+    } catch (error) {
+      const output = [
+        error.stdout ? String(error.stdout).trim() : '',
+        error.stderr ? String(error.stderr).trim() : '',
+      ].filter(Boolean).join('\n');
+      this.checkFail(
+        'secret scan',
+        output || 'Tracked secrets or real .env files were detected'
+      );
+    }
+  }
+
   checkConfigFiles() {
     const configs = [
       { path: 'src/utils/envValidator.js', desc: 'Environment validator' },
@@ -192,8 +209,7 @@ class DeploymentValidator {
 
   checkLavaliinkConfig() {
     const lavaConfigs = [
-      '../ton618-music/lavalink/application.yml',
-      '../ton618-music/lavalink/application-free.yml',
+      'lavalink/application.yml',
     ];
 
     for (const config of lavaConfigs) {

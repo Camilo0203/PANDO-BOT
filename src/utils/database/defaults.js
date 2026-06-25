@@ -92,6 +92,8 @@ function buildSettingsDefaults(guildId, dateFactory = () => new Date()) {
     command_rate_limit_overrides: {},
     dashboard_general_settings: buildDashboardGeneralSettingsDefaults(),
     dashboard_moderation_settings: buildDashboardModerationSettingsDefaults(),
+    dashboard_automod_settings: buildDashboardAutomodSettingsDefaults(),
+    dashboard_music_settings: buildDashboardMusicSettingsDefaults(),
     dashboard_preferences: buildDashboardPreferencesDefaults(),
     commercial_settings: buildCommercialSettingsDefaults(dateFactory),
     dashboard_source_updated_at: null,
@@ -142,6 +144,39 @@ function buildDashboardModerationSettingsDefaults() {
     duplicateWindowSeconds: 45,
     raidProtectionEnabled: true,
     raidPreset: "balanced",
+  };
+}
+
+function buildDashboardAutomodSettingsDefaults() {
+  return {
+    enabled: false,
+    preset: "balanced",
+    blockInvites: true,
+    blockLinks: false,
+    blockSpam: true,
+    blockMassMentions: true,
+    blockCaps: false,
+    scamProtection: true,
+    regexProtection: false,
+    logChannelId: null,
+    alertRoleId: null,
+  };
+}
+
+function buildDashboardMusicSettingsDefaults() {
+  return {
+    enabled: true,
+    defaultVolume: 80,
+    maxFreeQueue: 10,
+    maxProQueue: 200,
+    maxFreeDurationMinutes: 5,
+    maxProDurationMinutes: 360,
+    allowSpotify: true,
+    allowPlaylists: true,
+    allowFilters: true,
+    djRoleId: null,
+    announceNowPlaying: true,
+    disconnectOnEmpty: true,
   };
 }
 
@@ -260,6 +295,8 @@ module.exports = {
   buildSettingsDefaults,
   buildDashboardGeneralSettingsDefaults,
   buildDashboardModerationSettingsDefaults,
+  buildDashboardAutomodSettingsDefaults,
+  buildDashboardMusicSettingsDefaults,
   buildDashboardPreferencesDefaults,
   buildCommercialSettingsDefaults,
   buildLevelSettingsDefaults,

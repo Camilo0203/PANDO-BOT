@@ -26,9 +26,21 @@ function createHealthApp({ healthState, buildInfo, getClient }) {
   const RL_WINDOW_MS = 60_000;
   const RL_MAX = 60;
   const rlMap = new Map();
+  let lastRateLimitSweepAt = Date.now();
+
+  function sweepRateLimits(now) {
+    if (now - lastRateLimitSweepAt < RL_WINDOW_MS) return;
+    lastRateLimitSweepAt = now;
+    for (const [ip, record] of rlMap) {
+      if (now - record.start > RL_WINDOW_MS) {
+        rlMap.delete(ip);
+      }
+    }
+  }
 
   function isRateLimited(ip) {
     const now = Date.now();
+    sweepRateLimits(now);
     const record = rlMap.get(ip);
     if (!record) {
       rlMap.set(ip, { count: 1, start: now });
@@ -43,7 +55,7 @@ function createHealthApp({ healthState, buildInfo, getClient }) {
   }
 
   app.use((req, res, next) => {
-    const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket?.remoteAddress || "unknown";
+    const ip = req.ip || req.socket?.remoteAddress || "unknown";
     if (isRateLimited(ip)) {
       return res.status(429).json({ error: "Too Many Requests", retryAfterSec: Math.ceil(RL_WINDOW_MS / 1000) });
     }
@@ -69,7 +81,6 @@ function createHealthApp({ healthState, buildInfo, getClient }) {
         node: process.version,
         platform: process.platform,
         arch: process.arch,
-        pid: process.pid,
       },
     };
 

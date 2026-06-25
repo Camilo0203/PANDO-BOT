@@ -13,6 +13,10 @@ const path = require("path");
 const { Collection } = require("discord.js");
 const logger = require("../../utils/structuredLogger");
 const { t, normalizeLanguage } = require("../../music/i18n");
+const {
+  isMusicComponent,
+  musicComponentHandler,
+} = require("./musicComponentHandler");
 
 const log = {
   info: (msg, meta) => logger.info("Music.INTHANDLER", msg, meta || {}),
@@ -72,6 +76,9 @@ async function safeReply(interaction, payload) {
 }
 
 async function musicInteractionHandler(interaction) {
+  if (isMusicComponent(interaction)) {
+    return musicComponentHandler(interaction);
+  }
   if (!interaction.isChatInputCommand()) return false;
   const command = commands.get(interaction.commandName);
   if (!command) return false;

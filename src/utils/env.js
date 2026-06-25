@@ -28,6 +28,21 @@ function resolveValidationMode(env = process.env, options = {}) {
   return "default";
 }
 
+function isValidSentryDsn(value) {
+  try {
+    const parsed = new URL(String(value));
+    const validHost = /^[a-z0-9-]+\.ingest(?:\.[a-z0-9-]+)?\.sentry\.io$/i.test(parsed.hostname);
+    const validProject = /^\/\d+\/?$/.test(parsed.pathname);
+    return parsed.protocol === "https:"
+      && Boolean(parsed.username)
+      && !parsed.password
+      && validHost
+      && validProject;
+  } catch {
+    return false;
+  }
+}
+
 function validateEnv(env = process.env, options = {}) {
   const errors = [];
   const warnings = [];
@@ -178,8 +193,8 @@ function validateEnv(env = process.env, options = {}) {
   if (strictProduction && !env.SENTRY_DSN) {
     warnings.push("SENTRY_DSN is recommended in production for error tracking and observability.");
   }
-  if (env.SENTRY_DSN && !/^https:\/\/[a-f0-9]+@[a-f0-9]+\.ingest\.sentry\.io\/\d+$/i.test(env.SENTRY_DSN)) {
-    warnings.push("SENTRY_DSN format looks invalid. Expected format: https://<key>@<org>.ingest.sentry.io/<project>");
+  if (env.SENTRY_DSN && !isValidSentryDsn(env.SENTRY_DSN)) {
+    warnings.push("SENTRY_DSN format looks invalid. Expected a valid HTTPS Sentry ingest DSN.");
   }
 
   // Alert webhook validation
@@ -285,6 +300,7 @@ function validateEnv(env = process.env, options = {}) {
 }
 
 module.exports = {
+  isValidSentryDsn,
   resolveValidationMode,
   validateEnv,
 };

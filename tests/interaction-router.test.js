@@ -253,7 +253,7 @@ test("router responde mensaje controlado cuando la DB no esta disponible", async
 });
 
 test("router delega botones music y retorna sin ejecutar handlers locales", async () => {
-  const musicModule = require("ton618-music/src/handlers/musicInteractionHandler");
+  const musicModule = require("../src/handlers/music/musicInteractionHandler");
   const originalHandler = musicModule.musicInteractionHandler;
   let delegated = 0;
   let localHandled = false;

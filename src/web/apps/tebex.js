@@ -16,6 +16,8 @@ const {
   revokeProviderCodes,
 } = require("../../utils/database/proRedeemCodes");
 const logger = require("../../utils/structuredLogger");
+const { recordSecurityAuditEvent } = require("../../utils/securityAuditLog");
+const { sendOperationalAlert } = require("../../utils/operationalAlerts");
 
 const WEBHOOK_EVENTS_COLLECTION = "webhook_events";
 const GRANT_EVENTS = new Set(["payment.completed", "recurring-payment.renewed"]);
@@ -484,6 +486,30 @@ function createTebexApp({ getClient }) {
     const signature = req.headers["x-signature"] || req.headers["x-tebex-signature"] || "";
     if (!verifyTebexSignature(rawBody, signature, secret)) {
       logger.warn("tebex", "Rejected webhook with invalid signature", { eventType, eventId });
+      recordSecurityAuditEvent({
+        source: "tebex-webhook",
+        action: "tebex.webhook.invalid_signature",
+        severity: "critical",
+        status: "denied",
+        metadata: {
+          eventType,
+          eventId,
+          hasSignature: Boolean(signature),
+          userAgent: req.get("user-agent") || null,
+        },
+      }).catch(() => {});
+      sendOperationalAlert({
+        type: "security.tebex.invalid_signature",
+        severity: "critical",
+        title: "Invalid Tebex webhook signature",
+        message: "TON618 rejected a Tebex webhook because the signature did not validate.",
+        details: {
+          eventType,
+          eventId,
+          hasSignature: Boolean(signature),
+        },
+        dedupeKey: "security:tebex-invalid-signature",
+      }).catch(() => {});
       return res.status(401).json({ error: "invalid_signature" });
     }
 
@@ -493,6 +519,13 @@ function createTebexApp({ getClient }) {
 
     if (!eventId) {
       logger.error("tebex", "Rejected webhook without an event ID", { eventType });
+      recordSecurityAuditEvent({
+        source: "tebex-webhook",
+        action: "tebex.webhook.missing_event_id",
+        severity: "warning",
+        status: "denied",
+        metadata: { eventType },
+      }).catch(() => {});
       return res.status(400).json({ error: "missing_event_id" });
     }
 

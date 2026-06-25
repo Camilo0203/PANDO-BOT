@@ -24,6 +24,9 @@ const {
   updateMongoHealth,
 } = require("./src/utils/runtimeHealth");
 const { startMemoryMonitor, stopMemoryMonitor } = require("./src/utils/memoryManager");
+const { startHealthMonitor, stopHealthMonitor } = require("./src/utils/healthMonitor");
+const { sendOperationalAlert } = require("./src/utils/operationalAlerts");
+const { recordSecurityAuditEvent, ensureSecurityAuditIndexes } = require("./src/utils/securityAuditLog");
 const { initiateShutdown, isShuttingDown } = require("./src/utils/shutdownManager");
 const { startWebServer, stopWebServer } = require("./src/web/server");
 
@@ -221,7 +224,7 @@ function createDiscordClient(healthState) {
 
   client.commands = new Collection();
 
-  // === MÚSICA (migrado desde ton618-music en 2025-Q4) ===
+  // === MÚSICA INTEGRADA ===
   try {
     const { MusicManager } = require("./src/music/MusicManager");
     client.musicManager = new MusicManager(client);
@@ -272,6 +275,17 @@ function createDiscordClient(healthState) {
       shardId,
       closeCode: event?.code ?? null,
     });
+    sendOperationalAlert({
+      type: "discord.gateway.disconnect",
+      severity: "critical",
+      title: "Discord shard disconnected",
+      message: "A TON618 Discord shard disconnected from the gateway.",
+      details: {
+        shardId,
+        closeCode: event?.code ?? null,
+      },
+      dedupeKey: `discord:shard:${shardId}:disconnect`,
+    }).catch(() => {});
   });
   client.on("shardError", (error, shardId) => {
     markDiscordGatewayEvent(healthState, "shardError", false);
@@ -282,6 +296,14 @@ function createDiscordClient(healthState) {
       shardId,
       error: errMsg,
     });
+    sendOperationalAlert({
+      type: "discord.gateway.error",
+      severity: "critical",
+      title: "Discord shard error",
+      message: "A TON618 Discord shard emitted an error.",
+      details: { shardId, error: errMsg },
+      dedupeKey: `discord:shard:${shardId}:error`,
+    }).catch(() => {});
   });
   client.on("shardReconnecting", (shardId) => {
     markDiscordGatewayEvent(healthState, "shardReconnecting", false);
@@ -290,6 +312,13 @@ function createDiscordClient(healthState) {
   client.on("invalidated", () => {
     markDiscordGatewayEvent(healthState, "invalidated", false);
     logStructured("warn", "discord.gateway.invalidated", {});
+    sendOperationalAlert({
+      type: "discord.gateway.invalidated",
+      severity: "critical",
+      title: "Discord session invalidated",
+      message: "Discord invalidated the bot session. Manual review may be required.",
+      dedupeKey: "discord:invalidated",
+    }).catch(() => {});
   });
   client.on("error", (error) => {
     const errMsg = error?.message || String(error);
@@ -298,6 +327,14 @@ function createDiscordClient(healthState) {
     logStructured("error", "discord.client.error", {
       error: errMsg,
     });
+    sendOperationalAlert({
+      type: "discord.client.error",
+      severity: "warning",
+      title: "Discord client error",
+      message: "The Discord client emitted an error.",
+      details: { error: errMsg },
+      dedupeKey: "discord:client-error",
+    }).catch(() => {});
   });
 
   return client;
@@ -389,6 +426,10 @@ async function cleanupStartupFailure(client, healthState) {
   } catch {}
 
   try {
+    stopHealthMonitor();
+  } catch {}
+
+  try {
     await closeDB();
     updateMongoHealth(healthState, false);
   } catch {}
@@ -472,6 +513,15 @@ async function startBot() {
         stopMemoryMonitor();
       } catch (error) {
         logStructured("error", "process.shutdown.memory_monitor_error", {
+          signal,
+          error: error?.message || String(error),
+        });
+      }
+
+      try {
+        stopHealthMonitor();
+      } catch (error) {
+        logStructured("error", "process.shutdown.health_monitor_error", {
           signal,
           error: error?.message || String(error),
         });
@@ -567,6 +617,7 @@ async function startBot() {
       async () => {
         await connectDB();
         updateMongoHealth(healthState, true);
+        await ensureSecurityAuditIndexes();
       },
       {
         startMessage: "Conectando a MongoDB...",
@@ -590,6 +641,21 @@ async function startBot() {
 
     startMemoryMonitor({ intervalMs: 30000 });
     logger.info("startup.memory-monitor", "Memory monitor started");
+    startHealthMonitor({
+      healthState,
+      buildInfo,
+      getClient: () => client,
+    });
+    await recordSecurityAuditEvent({
+      source: "startup",
+      action: "bot.startup.monitoring_enabled",
+      severity: "info",
+      status: "ok",
+      metadata: {
+        build: buildInfo.fingerprint,
+        healthMonitor: true,
+      },
+    });
 
     client = createDiscordClient(healthState);
 

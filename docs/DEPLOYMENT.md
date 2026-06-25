@@ -6,13 +6,13 @@ La arquitectura oficial usa una VPS, PM2 y Cloudflare Tunnel.
 
 Deben existir exactamente estos servicios de TON618:
 
-- `lavalink`
+- `ton618-lavalink`
 - `ton618-bot`
 - `ton618-web`
 - `ton618-status`
 
-`ton618-music` es un modulo cargado por `ton618-bot`; no debe ejecutarse como
-proceso PM2 independiente.
+La música está integrada directamente en `ton618-bot`; no necesita un
+repositorio o proceso adicional.
 
 ## Puertos privados
 

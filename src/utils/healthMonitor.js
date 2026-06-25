@@ -1,217 +1,157 @@
-const { EmbedBuilder } = require("discord.js");
-const { getDB } = require("./database");
-const { getGuildSettings } = require("./accessControl");
-const { buildWindowSummary, logStructured } = require("./observability");
-const { t } = require("./i18n");
+"use strict";
 
-const HEARTBEAT_DOC_ID = "main";
-const alertThrottle = new Map();
+const { pingDB } = require("./database/core");
+const { buildHealthPayload, updateMongoHealth } = require("./runtimeHealth");
+const { alertOnStateChange, sendOperationalAlert } = require("./operationalAlerts");
+const logger = require("./structuredLogger");
 
-function toNumber(value, fallback) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
+let interval = null;
+
+function toInt(value, fallback, min, max) {
+  const parsed = Number.parseInt(String(value ?? ""), 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
 }
 
-function getConfig() {
-  return {
-    heartbeatMs: Math.max(30_000, toNumber(process.env.HEALTH_HEARTBEAT_MS, 60_000)),
-    evaluateMs: Math.max(60_000, toNumber(process.env.HEALTH_EVALUATE_MS, 300_000)),
-    alertCooldownMs: Math.max(60_000, toNumber(process.env.HEALTH_ALERT_COOLDOWN_MS, 900_000)),
-    pingWarnMs: Math.max(50, toNumber(process.env.HEALTH_PING_WARN_MS, 300)),
-    errorRateWarnPct: Math.max(1, toNumber(process.env.HEALTH_ERROR_RATE_WARN_PCT, 25)),
-    minInteractionsForErrorAlert: Math.max(1, toNumber(process.env.HEALTH_MIN_INTERACTIONS, 20)),
-    downtimeThresholdMs: Math.max(60_000, toNumber(process.env.HEALTH_DOWNTIME_THRESHOLD_MS, 600_000)),
-  };
+function resolveIntervalMs() {
+  return toInt(process.env.HEALTH_MONITOR_INTERVAL_MS || process.env.HEALTH_CHECK_INTERVAL_MS, 30_000, 5_000, 3_600_000);
 }
 
-function shouldThrottle(key, cooldownMs) {
-  const now = Date.now();
-  const nextAllowedAt = alertThrottle.get(key) || 0;
-  if (nextAllowedAt > now) return true;
-  alertThrottle.set(key, now + cooldownMs);
-  return false;
+function resolveMemoryWarnMb() {
+  return toInt(process.env.MEMORY_WARNING_THRESHOLD_MB, 0, 0, 65_536);
 }
 
-async function readHeartbeat() {
-  try {
-    return await getDB().collection("botHealth").findOne({ id: HEARTBEAT_DOC_ID });
-  } catch {
-    return null;
-  }
+function isDiscordHealthy(payload) {
+  return payload.discordReady === true;
 }
 
-async function getPersistedHealthSnapshot() {
-  return readHeartbeat();
+function isMongoHealthy(payload) {
+  return payload.mongoConnected === true;
 }
 
-async function writeHeartbeat(client, snapshot) {
-  try {
-    await getDB().collection("botHealth").updateOne(
-      { id: HEARTBEAT_DOC_ID },
-      {
-        $set: {
-          id: HEARTBEAT_DOC_ID,
-          bot_tag: client.user?.tag || null,
-          guilds: client.guilds?.cache?.size || 0,
-          ping_ms: client.ws?.ping ?? null,
-          interactions_total: snapshot.interactionsTotal,
-          interactions_per_sec: snapshot.interactionsPerSec,
-          by_status: snapshot.byStatus,
-          by_kind: snapshot.byKind,
-          last_seen: new Date(),
-        },
+function isMemoryHealthy(payload) {
+  const threshold = resolveMemoryWarnMb();
+  if (!threshold) return true;
+  return Number(payload.memory?.rssMB || 0) < threshold;
+}
+
+async function runHealthMonitorCheck({ healthState, buildInfo, client = null } = {}) {
+  const mongoOk = await pingDB(1500);
+  updateMongoHealth(healthState, mongoOk, { checkedAt: new Date().toISOString() });
+
+  const payload = buildHealthPayload({ healthState, buildInfo, client });
+  const discordOk = isDiscordHealthy(payload);
+  const memoryOk = isMemoryHealthy(payload);
+
+  await alertOnStateChange(
+    "health:mongo",
+    isMongoHealthy(payload),
+    {
+      type: "health.mongo.degraded",
+      severity: "critical",
+      title: "MongoDB health degraded",
+      message: "TON618 cannot confirm MongoDB connectivity.",
+      details: {
+        lastMongoPingAt: payload.lastMongoPingAt,
+        lastMongoPingOkAt: payload.lastMongoPingOkAt,
       },
-      { upsert: true }
-    );
-  } catch (error) {
-    logStructured("warn", "health.heartbeat.write_failed", {
-      error: error?.message || String(error),
+    },
+    {
+      title: "MongoDB recovered",
+      message: "MongoDB connectivity is healthy again.",
+    }
+  );
+
+  await alertOnStateChange(
+    "health:discord",
+    discordOk,
+    {
+      type: "health.discord.degraded",
+      severity: "critical",
+      title: "Discord gateway degraded",
+      message: "TON618 Discord gateway is not ready.",
+      details: {
+        lastDiscordEvent: payload.lastDiscordEvent,
+        lastDiscordEventAt: payload.lastDiscordEventAt,
+        discordCloseCode: payload.discordCloseCode,
+        ping: payload.discord?.ping,
+      },
+    },
+    {
+      title: "Discord gateway recovered",
+      message: "Discord gateway is healthy again.",
+    }
+  );
+
+  await alertOnStateChange(
+    "health:memory",
+    memoryOk,
+    {
+      type: "health.memory.warning",
+      severity: "warning",
+      title: "High memory usage",
+      message: "TON618 memory usage crossed the configured warning threshold.",
+      details: {
+        rssMB: payload.memory?.rssMB,
+        heapUsedMB: payload.memory?.heapUsedMB,
+        thresholdMB: resolveMemoryWarnMb(),
+      },
+    },
+    {
+      title: "Memory usage recovered",
+      message: "Memory usage is back under the warning threshold.",
+    }
+  );
+
+  if (payload.status !== "ok") {
+    await sendOperationalAlert({
+      type: "health.overall.degraded",
+      severity: "warning",
+      title: "TON618 health is degraded",
+      message: "The public health endpoint would currently report degraded status.",
+      details: {
+        status: payload.status,
+        mongoConnected: payload.mongoConnected,
+        discordReady: payload.discordReady,
+        uptimeSec: payload.uptimeSec,
+      },
+      dedupeKey: "health:overall",
     });
   }
+
+  return payload;
 }
 
-function buildHealthSnapshot(client) {
-  const summary = buildWindowSummary();
-  const byStatus = summary.byStatus || {};
-  const ok = Number(byStatus.ok || 0);
-  const errors = Number(byStatus.error || 0);
-  const denied = Number(byStatus.denied || 0);
-  const rateLimited = Number(byStatus.rate_limited || 0);
-  const total = Math.max(0, Number(summary.interactionsTotal || 0));
-  const errorRatePct = total > 0 ? Math.round((errors / total) * 100) : 0;
-
-  return {
-    summary,
-    pingMs: Number(client.ws?.ping || 0),
-    interactionsTotal: total,
-    errorRatePct,
-    byStatus: { ok, errors, denied, rateLimited },
-  };
-}
-
-async function sendAlertToGuildLogs(client, buildEmbed, options = {}) {
-  const guildEntries = Array.from(client.guilds.cache.values());
-  for (const guild of guildEntries) {
-    try {
-      const guildSettings = await getGuildSettings(guild.id);
-      const logChannelId = guildSettings?.log_channel;
-      if (!logChannelId) continue;
-      const channel = guild.channels.cache.get(logChannelId)
-        || await guild.channels.fetch(logChannelId).catch(() => null);
-      if (!channel) continue;
-
-      const throttleKey = `${guild.id}::${options.alertType || "health"}`;
-      if (shouldThrottle(throttleKey, options.alertCooldownMs || 900_000)) continue;
-
-      const embed = buildEmbed(guild);
-      await channel.send({ embeds: [embed] }).catch((err) => {
-        logStructured("error", "health_monitor.send_embed_failed", { guildId: guild.id, error: err?.message || String(err) });
+function startHealthMonitor({ healthState, buildInfo, getClient } = {}) {
+  if (interval) return false;
+  const intervalMs = resolveIntervalMs();
+  interval = setInterval(() => {
+    runHealthMonitorCheck({
+      healthState,
+      buildInfo,
+      client: typeof getClient === "function" ? getClient() : null,
+    }).catch((error) => {
+      logger.warn("healthMonitor", "Health monitor check failed", {
+        error: error?.message || String(error),
       });
-    } catch {}
-  }
+    });
+  }, intervalMs);
+  interval.unref?.();
+  logger.info("healthMonitor", "Health monitor started", { intervalMs });
+  return true;
 }
 
-async function alertDowntimeRecovery(client, previousHeartbeat, config, language = "es") {
-  if (!previousHeartbeat?.last_seen) return;
-  const lastSeenAt = new Date(previousHeartbeat.last_seen).getTime();
-  if (!Number.isFinite(lastSeenAt)) return;
-
-  const downtimeMs = Date.now() - lastSeenAt;
-  if (downtimeMs < config.downtimeThresholdMs) return;
-
-  const downtimeMinutes = Math.max(1, Math.round(downtimeMs / 60000));
-  await sendAlertToGuildLogs(
-    client,
-    (guild) => new EmbedBuilder()
-      .setColor(0xFEE75C)
-      .setTitle(t(language, "health_monitor.downtime_recovery_title"))
-      .setDescription(
-        t(language, "health_monitor.downtime_recovery_description", {
-          guildName: guild.name,
-          minutes: downtimeMinutes
-        })
-      )
-      .setTimestamp(),
-    { alertType: "downtime_recovery", alertCooldownMs: config.alertCooldownMs }
-  );
-}
-
-async function evaluateHealth(client, config, language = "es") {
-  const snapshot = buildHealthSnapshot(client);
-  await writeHeartbeat(client, snapshot);
-
-  const shouldWarnPing = snapshot.pingMs >= config.pingWarnMs;
-  const shouldWarnErrors =
-    snapshot.interactionsTotal >= config.minInteractionsForErrorAlert &&
-    snapshot.errorRatePct >= config.errorRateWarnPct;
-
-  if (shouldWarnPing) {
-    await sendAlertToGuildLogs(
-      client,
-      (guild) => new EmbedBuilder()
-        .setColor(0xE67E22)
-        .setTitle(t(language, "health_monitor.ping_high_title"))
-        .setDescription(
-          t(language, "health_monitor.ping_high_description", {
-            pingMs: snapshot.pingMs,
-            thresholdMs: config.pingWarnMs,
-            guildName: guild.name
-          })
-        )
-        .addFields(
-          { name: t(language, "health_monitor.field_interactions"), value: `\`${snapshot.interactionsTotal}\``, inline: true },
-          { name: t(language, "health_monitor.field_error_rate"), value: `\`${snapshot.errorRatePct}%\``, inline: true }
-        )
-        .setTimestamp(),
-      { alertType: "ping_high", alertCooldownMs: config.alertCooldownMs }
-    );
-  }
-
-  if (shouldWarnErrors) {
-    await sendAlertToGuildLogs(
-      client,
-      (guild) => new EmbedBuilder()
-        .setColor(0xED4245)
-        .setTitle(t(language, "health_monitor.error_rate_high_title"))
-        .setDescription(
-          t(language, "health_monitor.error_rate_high_description", {
-            errorRatePct: snapshot.errorRatePct,
-            thresholdPct: config.errorRateWarnPct,
-            guildName: guild.name
-          })
-        )
-        .addFields(
-          { name: t(language, "health_monitor.field_interactions"), value: `\`${snapshot.interactionsTotal}\``, inline: true },
-          { name: t(language, "health_monitor.field_errors"), value: `\`${snapshot.byStatus.errors}\``, inline: true },
-          { name: t(language, "health_monitor.field_ping"), value: `\`${snapshot.pingMs}ms\``, inline: true }
-        )
-        .setTimestamp(),
-      { alertType: "error_rate_high", alertCooldownMs: config.alertCooldownMs }
-    );
-  }
-}
-
-async function startHealthMonitor(client) {
-  const config = getConfig();
-  const previousHeartbeat = await readHeartbeat();
-  await alertDowntimeRecovery(client, previousHeartbeat, config);
-
-  await evaluateHealth(client, config);
-
-  const heartbeatTimer = setInterval(() => {
-    const snapshot = buildHealthSnapshot(client);
-    void writeHeartbeat(client, snapshot);
-  }, config.heartbeatMs);
-  if (typeof heartbeatTimer.unref === "function") heartbeatTimer.unref();
-
-  const evaluateTimer = setInterval(() => {
-    void evaluateHealth(client, config);
-  }, config.evaluateMs);
-  if (typeof evaluateTimer.unref === "function") evaluateTimer.unref();
+function stopHealthMonitor() {
+  if (!interval) return false;
+  clearInterval(interval);
+  interval = null;
+  logger.info("healthMonitor", "Health monitor stopped");
+  return true;
 }
 
 module.exports = {
+  runHealthMonitorCheck,
   startHealthMonitor,
-  buildHealthSnapshot,
-  getPersistedHealthSnapshot,
+  stopHealthMonitor,
+  resolveIntervalMs,
 };

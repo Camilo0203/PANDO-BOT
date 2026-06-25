@@ -38,6 +38,9 @@ function startWebServer({ healthState, buildInfo, getClient, port }) {
   return new Promise((resolve, reject) => {
     try {
       const mainApp = express();
+      if (process.env.NODE_ENV === "production") {
+        mainApp.set("trust proxy", 1);
+      }
 
       // ── Security headers (applies to all routes except webhook) ──
       mainApp.use(createHelmetMiddleware());
@@ -103,7 +106,13 @@ function startWebServer({ healthState, buildInfo, getClient, port }) {
         const status = err?.response?.status;
         const msg    = err?.response?.data || err?.message;
         logger.warn("tebex-proxy", `Checkout proxy error pkg=${pkgId}`, { status, error: String(msg).slice(0, 200) });
-        return res.status(502).json({ error: "tebex_error", status, detail: String(msg).slice(0, 100) });
+        return res.status(502).json({
+          error: "tebex_error",
+          status,
+          ...(process.env.NODE_ENV === "production"
+            ? {}
+            : { detail: String(msg).slice(0, 100) }),
+        });
       }
     });
 

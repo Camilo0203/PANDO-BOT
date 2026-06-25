@@ -5,6 +5,7 @@ const REFRESH_INTERVAL = 10000;
 
 let guildsData = [];
 let refreshTimer = null;
+let apiKey = sessionStorage.getItem("ton618_dashboard_api_key") || "";
 
 function $(sel) { return document.querySelector(sel); }
 function $$(sel) { return document.querySelectorAll(sel); }
@@ -56,9 +57,32 @@ function setLoading(selector, isLoading) {
 }
 
 /* ── Fetch Stats ── */
+function requestApiKey() {
+  const nextKey = window.prompt("Enter the TON618 dashboard API key:");
+  if (!nextKey) return "";
+  apiKey = nextKey.trim();
+  if (apiKey) sessionStorage.setItem("ton618_dashboard_api_key", apiKey);
+  return apiKey;
+}
+
+async function apiFetch(path) {
+  if (!apiKey && !requestApiKey()) {
+    throw new Error("Dashboard API key is required");
+  }
+  const response = await fetch(`${API_BASE}${path}`, {
+    headers: { "X-Api-Key": apiKey },
+  });
+  if (response.status === 401) {
+    sessionStorage.removeItem("ton618_dashboard_api_key");
+    apiKey = "";
+    throw new Error("Unauthorized dashboard API key");
+  }
+  return response;
+}
+
 async function fetchStats() {
   try {
-    const res = await fetch(`${API_BASE}/api/stats`);
+    const res = await apiFetch("/api/stats");
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   } catch (err) {
@@ -70,7 +94,7 @@ async function fetchStats() {
 /* ── Fetch Guilds ── */
 async function fetchGuilds() {
   try {
-    const res = await fetch(`${API_BASE}/api/guilds`);
+    const res = await apiFetch("/api/guilds");
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     guildsData = data.guilds || [];
@@ -85,7 +109,7 @@ async function fetchGuilds() {
 /* ── Fetch Health ── */
 async function fetchHealth() {
   try {
-    const res = await fetch(`${API_BASE}/api/health`);
+    const res = await apiFetch("/api/health");
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   } catch (err) {
@@ -130,11 +154,13 @@ function updateKPIs(stats, health) {
   }
 
   // Status badge
-  const statusBadge = $("#status-badge");
-  if (statusBadge && health) {
+  const statusBadges = $$(".status-badge");
+  if (statusBadges.length && health) {
     const isOk = health.status === "ok";
-    statusBadge.className = `badge ${isOk ? "badge-online" : "badge-danger"}`;
-    statusBadge.innerHTML = `<span class="badge-dot"></span> ${isOk ? "ONLINE" : "DEGRADED"}`;
+    statusBadges.forEach((statusBadge) => {
+      statusBadge.className = `status-badge badge ${isOk ? "badge-online" : "badge-danger"}`;
+      statusBadge.innerHTML = `<span class="badge-dot"></span> ${isOk ? "ONLINE" : "DEGRADED"}`;
+    });
   }
 }
 

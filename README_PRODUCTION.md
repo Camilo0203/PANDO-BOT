@@ -56,8 +56,8 @@ npm run generate:keys
 # Output will show:
 # ENCRYPTION_KEY=a3efd161bff97a717d0a4918402c49ba385e02c61997849ef4698c58361ccfa0
 # HASH_SALT=8c6b9455fd9ead52f9b582799d3cfcfe6573261a1aa83930
-# BOT_API_KEY=cd468d56fd72bbe82caa519c29ea2a301bc95974b7652d52f203af5c5849c013
-# DASH_API_KEY=93cfd20aa2dbcfd812369905f34beb5a19ca6c8e93b60df706f5f6be5000b762
+# BOT_API_KEY=<generate-a-unique-64-character-secret>
+# DASH_API_KEY=<generate-a-different-64-character-secret>
 # LAVALINK_PRO_PASSWORD=aBcD1234!@#$%^&*-_=+
 # LAVALINK_FREE_PASSWORD=XyZ9876!@#$%^&*-_=+
 

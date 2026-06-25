@@ -24,7 +24,9 @@ const {
 const {
   mapCommandsMutationPayload,
   mapGeneralMutationPayload,
+  mapAutomodMutationPayload,
   mapModlogMutationPayload,
+  mapMusicMutationPayload,
   mapServerRolesMutationPayload,
   mapSuggestionMutationPayload,
   mapSystemMutationPayload,
@@ -300,6 +302,16 @@ async function applyMutationToMongo(guildId, mutation) {
       });
     case "modlogs":
       return modlogSettings.update(guildId, mapModlogMutationPayload(payload), {
+        skipDashboardSync: true,
+        dashboardSyncReason: syncReason,
+      });
+    case "automod":
+      return settings.update(guildId, mapAutomodMutationPayload(payload), {
+        skipDashboardSync: true,
+        dashboardSyncReason: syncReason,
+      });
+    case "music":
+      return settings.update(guildId, mapMusicMutationPayload(payload), {
         skipDashboardSync: true,
         dashboardSyncReason: syncReason,
       });
